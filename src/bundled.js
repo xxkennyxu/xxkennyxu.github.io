@@ -1106,10 +1106,8 @@ var ZettWarrior = /** @class */ (function (_super) {
 
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
 
-
 var C_IGNORE_MONSTER = ["Target Automatron"];
 var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Franky"];
-var C_LOG_ICON = "&#128924;"; // &#127919;
 var C_ATTACK_THRESHOLD = 400;
 var C_COMBAT_HP_THRESHOLD = 6000;
 var C_COMBAT_BOSS_HP_THRESHOLD = 10000;
@@ -1165,14 +1163,19 @@ var CombatSystem = /** @class */ (function () {
         }
         var target = this.getTargetedMonster();
         var targetingMe = this.findMonstersTargeting();
-        if (target && target.target != character.name)
+        if (target && target.target != character.name) {
             target = null; // only keep target if its targeting me
-        if (targetingMe.length > 1)
+        }
+        if (targetingMe.length > 1) {
             ignoreBoss = true; // if there are multiple units attacking me, ignore boss for now
-        // see if there's a boss target
-        var entities = getEntities(function (entity) { return _this.isBossMonster(entity); });
-        if (entities.length && !ignoreBoss)
-            target = entities[0];
+        }
+        if (!ignoreBoss) {
+            // see if there's a boss target
+            var entities = getEntities(function (entity) { return _this.isBossMonster(entity); });
+            if (entities.length) {
+                target = entities[0];
+            }
+        }
         return target ? target : this.getNearestMonster();
     };
     CombatSystem.prototype.shouldFollowLeaderAttack = function () {
@@ -1257,8 +1260,6 @@ var CombatSystem = /** @class */ (function () {
                     return this.getTarget(true);
                 }
             }
-            change_target(target);
-            getLoggingSystem().addLogMessage(C_LOG_ICON + " " + target.name, C_MESSAGE_TYPE_TARGET);
         }
         return target;
     };
@@ -1283,6 +1284,9 @@ var combat_extends = (undefined && undefined.__extends) || (function () {
     };
 })();
 
+
+
+var C_LOG_ICON = "&#128924;"; // &#127919;
 var SoloCombat = /** @class */ (function (_super) {
     combat_extends(SoloCombat, _super);
     function SoloCombat() {
@@ -1292,6 +1296,8 @@ var SoloCombat = /** @class */ (function (_super) {
         var target = this.findTarget();
         if (!target)
             return;
+        change_target(target);
+        getLoggingSystem().addLogMessage(C_LOG_ICON + " " + target.name, C_MESSAGE_TYPE_TARGET);
         this.attack(target);
     };
     return SoloCombat;

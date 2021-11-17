@@ -1075,7 +1075,7 @@ var ZettWarrior = /** @class */ (function (_super) {
         for (var i = 0; i < partyMembers.length; i++) {
             if (partyMembers[i] === character.name)
                 continue;
-            start_character(partyMembers[i]);
+            start_character(partyMembers[i], partyMembers[i]);
         }
         setTimeout(function () { return ui(); }, 30000);
     };

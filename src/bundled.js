@@ -790,6 +790,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
                 u_item = this.UPGRADE_QUEUE[0];
                 if (getInventorySystem().findItem({ name: u_item.name }) === -1) {
                     this.UPGRADE_QUEUE.shift();
+                    u_item = null;
                 }
             }
             if (!u_item)

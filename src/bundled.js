@@ -1300,7 +1300,7 @@ var SoloCombat = /** @class */ (function (_super) {
         if (!target)
             return;
         change_target(target);
-        getLoggingSystem().addLogMessage(C_LOG_ICON + " " + target.name, C_MESSAGE_TYPE_TARGET);
+        getLoggingSystem().addLogMessage(C_LOG_ICON + " " + target.name.substring(0, Math.min(3, target.name.length)), C_MESSAGE_TYPE_TARGET);
         this.attack(target);
     };
     return SoloCombat;
@@ -1378,6 +1378,7 @@ var SoloLocation = /** @class */ (function (_super) {
             return;
         // TODO: create a better helper for logging/time diffs
         var locChangeSecs = this.locationChangeIntervalMin * 60;
+        nextLocation = nextLocation.substring(0, Math.min(3, nextLocation.length));
         getLoggingSystem().addLogMessage("&#9758; " + nextLocation + "-" + Math.trunc(locChangeSecs - secSince(this.lastDestinationChangeAt)), "t_location");
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
             this.smartMove(nextLocation);

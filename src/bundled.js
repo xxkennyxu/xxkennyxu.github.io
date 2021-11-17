@@ -785,13 +785,15 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             }
         }
         else {
-            var u_item = this.UPGRADE_QUEUE[0];
-            if (!u_item)
-                return; // callback executes async, so it fucks the array sometimes?
-            if (getInventorySystem().findItem({ name: u_item.name }) === -1) {
-                this.UPGRADE_QUEUE.shift();
-                return;
+            var u_item = void 0;
+            while (!u_item && this.UPGRADE_QUEUE.length) {
+                u_item = this.UPGRADE_QUEUE[0];
+                if (getInventorySystem().findItem({ name: u_item.name }) === -1) {
+                    this.UPGRADE_QUEUE.shift();
+                }
             }
+            if (!u_item)
+                return; // no items were found
             // TODO: go to the bank, retrieve all the <u_item.name> we can find and THEN try to upgrade
             if (distance(character, this.SCROLL_NPC) > 100) {
                 utils_getLocationSystem().smartMove("scrolls");
@@ -1731,9 +1733,10 @@ characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new Sol
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system
 new IsMerchant("Zetchant", "hpot0", "mpot0", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
-function start_c(name) {
+function start_c(name, ms) {
+    if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);
-    characters[name].start();
+    characters[name].start(ms);
 }
 //@ts-ignore
 parent.start_c = start_c;

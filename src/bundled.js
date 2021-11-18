@@ -104,9 +104,13 @@ function trimString(inputString, stringLength) {
     return inputString.substring(0, Math.min(stringLength, inputString.length));
 }
 var UpgradeItem = /** @class */ (function () {
-    function UpgradeItem() {
-        this.autoBuy = true;
-        this.upgradeType = UpgradeType.UPGRADE;
+    function UpgradeItem(name, maxRefine, upgradeType, autoBuy) {
+        if (upgradeType === void 0) { upgradeType = UpgradeType.UPGRADE; }
+        if (autoBuy === void 0) { autoBuy = true; }
+        this.name = name;
+        this.maxRefine = maxRefine;
+        this.upgradeType = upgradeType;
+        this.autoBuy = autoBuy;
     }
     return UpgradeItem;
 }());
@@ -792,29 +796,28 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     function ZetchantMerchant(skills) {
         var _this = _super.call(this, skills) || this;
         _this.UPGRADE_LIST = [
-            { name: "wcap", maxRefine: 7 },
-            { name: "wshoes", maxRefine: 7 },
-            { name: "wbreeches", maxRefine: 7 },
-            { name: "wattire", maxRefine: 7 },
-            { name: "wgloves", maxRefine: 7 },
-            { name: "coat1", maxRefine: 7 },
-            { name: "shoes1", maxRefine: 7 },
-            { name: "pants1", maxRefine: 7 },
-            { name: "gloves1", maxRefine: 7 },
-            { name: "helmet1", maxRefine: 7 },
-            { name: "sshield", maxRefine: 7 },
-            { name: "slimestaff", maxRefine: 7 },
-            { name: "phelmet", maxRefine: 7 },
-            { name: "firestaff", maxRefine: 7 },
-            { name: "mcape", maxRefine: 6 },
-            { upgradeType: UpgradeType.COMPOUND, name: "ringsj", maxRefine: 4 },
-            { upgradeType: UpgradeType.COMPOUND, name: "hpamulet", maxRefine: 4 },
-            { upgradeType: UpgradeType.COMPOUND, name: "hpbelt", maxRefine: 4 },
-            { upgradeType: UpgradeType.COMPOUND, name: "wbook0", maxRefine: 4 },
-            { upgradeType: UpgradeType.COMPOUND, name: "strearring", maxRefine: 3 },
-            { upgradeType: UpgradeType.COMPOUND, name: "intearring", maxRefine: 3 },
-            { upgradeType: UpgradeType.COMPOUND, name: "dexearring", maxRefine: 3 },
-            { upgradeType: UpgradeType.COMPOUND, name: "vitearring", maxRefine: 3 },
+            new UpgradeItem("wcap", 7),
+            new UpgradeItem("wshoes", 7),
+            new UpgradeItem("wbreeches", 7),
+            new UpgradeItem("wattire", 7),
+            new UpgradeItem("wgloves", 7),
+            new UpgradeItem("coat1", 7),
+            new UpgradeItem("pants1", 7),
+            new UpgradeItem("shoes1", 7),
+            new UpgradeItem("helmet1", 7),
+            new UpgradeItem("slimestaff", 7),
+            new UpgradeItem("phelmet", 7),
+            new UpgradeItem("sshield", 7),
+            new UpgradeItem("firestaff", 7),
+            new UpgradeItem("mcape", 6),
+            new UpgradeItem("ringsj", 4, UpgradeType.COMPOUND),
+            new UpgradeItem("hpamulet", 4, UpgradeType.COMPOUND),
+            new UpgradeItem("hpbelt", 4, UpgradeType.COMPOUND),
+            new UpgradeItem("wbook0", 4, UpgradeType.COMPOUND),
+            new UpgradeItem("strearring", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("intearring", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("dexearring", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("vitearring", 3, UpgradeType.COMPOUND),
         ];
         _this.VEND_LIST = [
         // { level: 3, name: "ringsj" },
@@ -947,6 +950,12 @@ var ZetchantMerchant = /** @class */ (function (_super) {
                 items = item_matrix[i_lvl];
                 grade = item_grade(character.items[items[0]]);
                 compound_promise = compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
+                compound_promise.then(function (data) { return scb(data); }, function (data) {
+                    game_log("[" + upgradeItem.name + "] : " + data.reason + " (" + locate_item("cscroll" + grade) + "|" + upgradeItem.autoBuy + ") " + items);
+                    if (locate_item("cscroll" + grade) === -1 && upgradeItem.autoBuy) {
+                        buy("cscroll" + grade);
+                    }
+                });
                 break;
             }
         }
@@ -955,11 +964,6 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             return;
         }
         getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, C_MESSAGE_TYPE_COMPOUND);
-        compound_promise.then(function (data) { return scb(data); }, function (data) {
-            game_log("[" + upgradeItem.name + "] : " + data.reason + " (" + locate_item("cscroll" + grade) + ") " + items);
-            if (locate_item("cscroll" + grade) === -1 && upgradeItem.autoBuy)
-                buy("cscroll" + grade);
-        });
         return compound_promise;
     };
     ZetchantMerchant.prototype.openStand = function () {

@@ -1257,12 +1257,13 @@ var CombatSystem = /** @class */ (function () {
             return getPartySystem().getPartyLeaderTarget();
         }
         var target = this.getTargetedMonster();
-        var targetingMe = this.findMonstersTargeting();
+        var nonBossMonstersTargetingMe = this.findNonBossMonstersTargeting();
         if (target && target.target != character.name) {
             target = null; // only keep target if its targeting me
         }
-        if (targetingMe.length > 1) {
+        if (nonBossMonstersTargetingMe.length > 1) {
             ignoreBoss = true; // if there are multiple units attacking me, ignore boss for now
+            target = this.getNonBossTargeting();
         }
         if (!ignoreBoss) {
             // see if there's a boss target
@@ -1272,6 +1273,20 @@ var CombatSystem = /** @class */ (function () {
             }
         }
         return target ? target : this.getNearestMonster();
+    };
+    CombatSystem.prototype.getNonBossTargeting = function (target) {
+        if (target === void 0) { target = character; }
+        for (var id in parent.entities) {
+            var current = parent.entities[id];
+            if (current.type != "monster" || !current.visible || current.dead)
+                continue;
+            if (this.isBossMonster(current))
+                continue;
+            if (current.target === target.name) {
+                return current;
+            }
+        }
+        return null;
     };
     CombatSystem.prototype.shouldFollowLeaderAttack = function () {
         if (character.name === getPartySystem().partyLeader)
@@ -1319,12 +1334,14 @@ var CombatSystem = /** @class */ (function () {
         }
         return target;
     };
-    CombatSystem.prototype.findMonstersTargeting = function (target) {
+    CombatSystem.prototype.findNonBossMonstersTargeting = function (target) {
         if (target === void 0) { target = character; }
         var targetingMe = [];
         for (var id in parent.entities) {
             var current = parent.entities[id];
             if (current.type != "monster")
+                continue;
+            if (this.isBossMonster(current))
                 continue;
             if (current.target === target.name) {
                 targetingMe.push(current);

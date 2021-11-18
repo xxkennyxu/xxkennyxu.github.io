@@ -1,0 +1,12 @@
+{
+  "name": "xxkennyxu.github.io",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "push": "copy ..\\aland\\dist\\bundled.js src\\ && git aa && git commit -m \"push\" && git push"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -91,6 +91,35 @@ function startChar(name) {
         ui();
     }, 20000);
 }
+function changeServer(server) {
+    switch (server) {
+        case Server.ASIA_1:
+            change_server("ASIA", "I");
+            break;
+        case Server.EU_1:
+            change_server("EU", "I");
+            break;
+        case Server.EU_2:
+            change_server("EU", "II");
+            break;
+        case Server.EU_PVP:
+            change_server("EU", "PVP");
+            break;
+        case Server.US_1:
+            change_server("US", "I");
+            break;
+        case Server.US_2:
+            change_server("US", "II");
+            break;
+        case Server.US_3:
+            change_server("US", "III");
+            break;
+        case Server.US_PVP:
+            change_server("US", "PVP");
+            break;
+        default: game_log("Server " + server + " is not recognized");
+    }
+}
 function getWorldBosses() {
     var worldbosses = [];
     for (var bossName in parent.S) {
@@ -106,6 +135,17 @@ function trimString(inputString, stringLength) {
     if (stringLength === void 0) { stringLength = 3; }
     return inputString.substring(0, Math.min(stringLength, inputString.length));
 }
+var Server;
+(function (Server) {
+    Server[Server["ASIA_1"] = 0] = "ASIA_1";
+    Server[Server["EU_1"] = 1] = "EU_1";
+    Server[Server["EU_2"] = 2] = "EU_2";
+    Server[Server["EU_PVP"] = 3] = "EU_PVP";
+    Server[Server["US_1"] = 4] = "US_1";
+    Server[Server["US_2"] = 5] = "US_2";
+    Server[Server["US_3"] = 6] = "US_3";
+    Server[Server["US_PVP"] = 7] = "US_PVP";
+})(Server || (Server = {}));
 var UpgradeItem = /** @class */ (function () {
     function UpgradeItem(name, maxRefine, upgradeType, autoBuy) {
         if (upgradeType === void 0) { upgradeType = UpgradeType.UPGRADE; }
@@ -1835,7 +1875,7 @@ var UseMerchant = /** @class */ (function (_super) {
         var _this = this;
         var inventorySize = this.inventorySize();
         var display = C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize;
-        getLoggingSystem().addLogMessage("" + C_ICON + display + this.usedMerchant, C_MESSAGE_TYPE_MERCHANT);
+        getLoggingSystem().addLogMessage("" + C_ICON + display, C_MESSAGE_TYPE_MERCHANT);
         var maybeTarget = get_player(this.merchantName);
         if (!this.usedMerchant && maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE) {
             this.sendItems(this.merchantName);

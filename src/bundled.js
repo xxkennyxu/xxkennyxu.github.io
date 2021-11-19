@@ -1177,6 +1177,7 @@ var ZetdPriest = /** @class */ (function (_super) {
         }
         if (!character.s.mluck)
             sendBuffRequest(getInventorySystem().merchantName, "mluck");
+        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y - 5); });
     };
     ZetdPriest.prototype.heal_party_members_percent = function (percent) {
         // const condition_count = getPartySystem().checkConditionOnPartyAndCount(
@@ -1240,6 +1241,7 @@ var ZettexRogue = /** @class */ (function (_super) {
         if (!character.s.mluck) {
             sendBuffRequest(getInventorySystem().merchantName, "mluck");
         }
+        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x - 5, character.y - 5); });
     };
     return ZettexRogue;
 }(CharacterFunction));
@@ -1288,7 +1290,7 @@ var ZettWarrior = /** @class */ (function (_super) {
                 && tar.target != character.name
                 && (getPartySystem().partyMembers.includes(tar.target));
         });
-        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 1, character.y + 1); });
+        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y + 5); });
         useSkill(this.getSkills().charge);
     };
     ZettWarrior.prototype.tauntTargetedPartyMember = function (f_condition) {
@@ -1486,8 +1488,8 @@ var CombatSystem = /** @class */ (function () {
 }());
 
 
-;// CONCATENATED MODULE: ./src/systems/combat/combat.ts
-var combat_extends = (undefined && undefined.__extends) || (function () {
+;// CONCATENATED MODULE: ./src/systems/combat/meleeCombat.ts
+var meleeCombat_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -1507,7 +1509,7 @@ var combat_extends = (undefined && undefined.__extends) || (function () {
 
 var C_LOG_ICON = "&#128924;"; // &#127919;
 var SoloCombat = /** @class */ (function (_super) {
-    combat_extends(SoloCombat, _super);
+    meleeCombat_extends(SoloCombat, _super);
     function SoloCombat() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -1652,7 +1654,8 @@ var PartySystem = /** @class */ (function () {
             skillBlock(partyMember);
         }
     };
-    PartySystem.prototype.checkConditionOnPartyAndCount = function (condCheck, condFunc) {
+    PartySystem.prototype.checkConditionOnPartyAndCount = function (condCheck, condFunc, onConditionCount) {
+        if (onConditionCount === void 0) { onConditionCount = 1; }
         var conditionCount = 0;
         for (var member in parent.party) {
             var partyMember = get_player(member);
@@ -1660,8 +1663,10 @@ var PartySystem = /** @class */ (function () {
                 continue;
             if (condCheck(partyMember)) {
                 conditionCount++;
-                condFunc(partyMember);
             }
+        }
+        if (condFunc && conditionCount >= onConditionCount) {
+            condFunc();
         }
         return conditionCount;
     };
@@ -1925,7 +1930,54 @@ var IsMerchant = /** @class */ (function (_super) {
 }(InventorySystem));
 
 
+;// CONCATENATED MODULE: ./src/systems/combat/kiteCombat.ts
+var kiteCombat_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+var kiteCombat_C_LOG_ICON = "&#128924;"; // &#127919;
+var KiteCombat = /** @class */ (function (_super) {
+    kiteCombat_extends(KiteCombat, _super);
+    function KiteCombat() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    KiteCombat.prototype.tick = function () {
+        var target = this.findTarget();
+        if (!target)
+            return;
+        change_target(target);
+        getLoggingSystem().addLogMessage(kiteCombat_C_LOG_ICON + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
+        var targetDistance = distance(character, target);
+        if (is_on_cooldown("attack") && targetDistance < 50) {
+            move(
+            // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
+            // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
+            character.x - (target.x - character.x) / 10, character.y - (target.y - character.y) / 10);
+        }
+        else {
+            this.attack(target);
+        }
+    };
+    return KiteCombat;
+}(CombatSystem));
+
+
 ;// CONCATENATED MODULE: ./src/start.ts
+
 
 
 
@@ -1947,7 +1999,7 @@ var characters = {};
 var C_FULL_PARTY_MEMBERS = ["Zett", "Zetchant", "Zettex", "Zetd", "Zeter", "Zetx", "Zetadin"];
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bat", "mvampire", 10), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee"), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));

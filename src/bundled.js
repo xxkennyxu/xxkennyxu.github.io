@@ -1961,12 +1961,16 @@ var KiteCombat = /** @class */ (function (_super) {
             return;
         change_target(target);
         getLoggingSystem().addLogMessage(kiteCombat_C_LOG_ICON + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
+        if (target.max_hp < character.attack * 2) {
+            this.attack(target);
+            return;
+        }
         var targetDistance = distance(character, target);
         if ((!target.target && targetDistance < 50) || target.target === character.name && is_on_cooldown("attack") && targetDistance < 50) {
             move(
             // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
             // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
-            character.x - (target.x - character.x) / 2, character.y - (target.y - character.y) / 2);
+            character.x - (target.x - character.x) / 4, character.y - (target.y - character.y) / 4);
         }
         else {
             this.attack(target);

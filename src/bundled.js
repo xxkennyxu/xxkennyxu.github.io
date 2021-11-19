@@ -1366,10 +1366,10 @@ var CombatSystem = /** @class */ (function () {
             return getPartySystem().getPartyLeaderTarget();
         }
         var target = this.getTargetedMonster();
-        var nonBossMonstersTargetingMe = this.findNonBossMonstersTargeting();
         if (target && target.target != character.name) {
             target = null; // only keep target if its targeting me
         }
+        var nonBossMonstersTargetingMe = this.findNonBossMonstersTargeting();
         if (nonBossMonstersTargetingMe.length > 1) {
             ignoreBoss = true; // if there are multiple units attacking me, ignore boss for now
             target = this.getNonBossTargeting();
@@ -1416,7 +1416,7 @@ var CombatSystem = /** @class */ (function () {
         return false;
     };
     CombatSystem.prototype.getTargetedMonster = function () {
-        if (parent.ctarget && !parent.ctarget.dead && parent.ctarget.type == 'monster')
+        if (parent.ctarget && !parent.ctarget.dead && parent.ctarget.type === "monster")
             return parent.ctarget;
         return null;
     };
@@ -1962,11 +1962,11 @@ var KiteCombat = /** @class */ (function (_super) {
         change_target(target);
         getLoggingSystem().addLogMessage(kiteCombat_C_LOG_ICON + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
         var targetDistance = distance(character, target);
-        if (target.target === character.name && is_on_cooldown("attack") && targetDistance < 50) {
+        if ((!target.target && targetDistance < 50) || target.target === character.name && is_on_cooldown("attack") && targetDistance < 50) {
             move(
             // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
             // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
-            character.x - (target.x - character.x) / 5, character.y - (target.y - character.y) / 5);
+            character.x - (target.x - character.x) / 2, character.y - (target.y - character.y) / 2);
         }
         else {
             this.attack(target);

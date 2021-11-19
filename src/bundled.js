@@ -1966,7 +1966,7 @@ var KiteCombat = /** @class */ (function (_super) {
             move(
             // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
             // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
-            character.x - (target.x - character.x) / 10, character.y - (target.y - character.y) / 10);
+            character.x - (target.x - character.x) / 5, character.y - (target.y - character.y) / 5);
         }
         else {
             this.attack(target);

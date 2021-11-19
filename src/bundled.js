@@ -1025,8 +1025,9 @@ var ZetchantMerchant = /** @class */ (function (_super) {
                 grade = item_grade(character.items[items[0]]);
                 compound_promise = compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
                 compound_promise.then(function (data) { return scb(data); }, function (data) {
-                    game_log("[" + upgradeItem.name + "] : " + data.reason + " (" + locate_item("cscroll" + grade) + "|" + upgradeItem.autoBuy + ") " + items);
-                    if (locate_item("cscroll" + grade) === -1 && upgradeItem.autoBuy) {
+                    var hasScroll = locate_item("cscroll" + grade) != -1;
+                    game_log("[" + upgradeItem.name + "] : " + (hasScroll ? data.reason : "no_scroll") + " (" + locate_item("cscroll" + grade) + "|" + upgradeItem.autoBuy + ") " + items);
+                    if (!hasScroll && upgradeItem.autoBuy) {
                         buy("cscroll" + grade);
                     }
                 });

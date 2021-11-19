@@ -69,6 +69,9 @@ function ui() {
         iframe.contentDocument.body.getElementsByTagName("div")[1].style.fontSize = "15px";
     }
 }
+function isQBusy() {
+    return Object.keys(character.q).length != 0;
+}
 function fixAddLog() {
     if (parent.addLogFixed) {
         return;
@@ -257,7 +260,7 @@ var Character = /** @class */ (function () {
                 return;
             }
             _this.characterFunction.beforeBusy();
-            if (is_moving(character) || smart.moving || Object.keys(character.q).length != 0)
+            if (is_moving(character) || smart.moving || isQBusy())
                 return;
             _this.characterFunction.tick();
             _this.systemFunc();
@@ -602,6 +605,10 @@ window.on_cm = function (name, data) {
     log("<== " + name + ": " + data.msg_type);
     if (!CM_MAP[data.msg_type])
         game_log(data.msg_type + " not found!");
+    if (isQBusy()) {
+        game_log("busy -- ignoring CM");
+        return;
+    }
     CM_MAP[data.msg_type](name, data.content, true);
 };
 
@@ -627,14 +634,13 @@ function bringPotionReply(name, data) {
 var C_DO_NOT_STORE_ITEM = ["pot", "cscroll", "scroll0", "scroll1", "tracker", "stand"];
 var InventorySystem = /** @class */ (function () {
     function InventorySystem(merchantName, hpPotName, mpPotName, potQtyThreshold) {
-        if (hpPotName === void 0) { hpPotName = "hpot0"; }
-        if (mpPotName === void 0) { mpPotName = "mpot0"; }
+        if (hpPotName === void 0) { hpPotName = "hpot1"; }
+        if (mpPotName === void 0) { mpPotName = "mpot1"; }
         if (potQtyThreshold === void 0) { potQtyThreshold = 100; }
         this.merchantName = merchantName;
         this.hpPotName = hpPotName;
         this.mpPotName = mpPotName;
         this.potQtyThreshold = potQtyThreshold;
-        this.lastMerchantInteractionAt = pastDatePlusMins(60);
     }
     InventorySystem.prototype.restockPotionsAt = function (pot, potQty, useCmRestock) {
         if (potQty === -1)
@@ -652,7 +658,6 @@ var InventorySystem = /** @class */ (function () {
     InventorySystem.prototype.storage = function (threshold, storeCond) {
         if (threshold === void 0) { threshold = 42; }
         if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
-        // character.q.banking = true;
         var num_items = this.inventorySize();
         if (num_items >= threshold) {
             return utils_getLocationSystem().smartMove("bank").then(function () {
@@ -664,7 +669,6 @@ var InventorySystem = /** @class */ (function () {
                         bank_store(i);
                     }
                 }
-                // delete character.q.banking;
             });
         }
     };
@@ -675,24 +679,26 @@ var InventorySystem = /** @class */ (function () {
                 num_items++;
         return num_items;
     };
-    InventorySystem.prototype.findItem = function (params) {
-        var items = this.findItems(params);
-        return items ? items[0] : -1;
+    InventorySystem.prototype.findItem = function (params, items) {
+        if (items === void 0) { items = character.items; }
+        var foundItems = this.findItems(params, items);
+        return foundItems ? foundItems[0] : -1;
     };
-    InventorySystem.prototype.findItems = function (params) {
-        var items = [];
-        for (var i = 0; i < character.items.length; i++) {
-            if (!character.items[i])
+    InventorySystem.prototype.findItems = function (params, items) {
+        if (items === void 0) { items = character.items; }
+        var foundItems = [];
+        for (var i = 0; i < items.length; i++) {
+            if (!items[i])
                 continue;
-            if (params.name && character.items[i].name != params.name)
+            if (params.name && items[i].name != params.name)
                 continue;
-            if (params.maxRefine && character.items[i].level >= params.maxRefine)
+            if (params.maxRefine && items[i].level >= params.maxRefine)
                 continue;
-            if (params.level && character.items[i].level != params.level)
+            if (params.level && items[i].level != params.level)
                 continue;
-            items.push(i);
+            foundItems.push(i);
         }
-        return (items.length === 0) ? null : items;
+        return (foundItems.length === 0) ? null : foundItems;
     };
     InventorySystem.prototype.sendItems = function (name, startIdx, endIdx) {
         if (startIdx === void 0) { startIdx = 0; }
@@ -791,6 +797,7 @@ var C_MERCHANT_STAND_LOCATION = {
     y: 0
 };
 var C_MERCHANT_SELL_ITEM_VALUE_MULT = 4;
+var C_MERCHANT_OPENED_BANKS = 2;
 var ZetchantMerchant = /** @class */ (function (_super) {
     zetchant_merchant_extends(ZetchantMerchant, _super);
     function ZetchantMerchant(skills) {
@@ -826,10 +833,8 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         ];
         _this.UPGRADE_QUEUE = [];
         _this.SCROLL_NPC = find_npc(G.npcs.scrolls.id);
-        _this.LAST_UPGRADE_PUSH_THRESHOLD = 300; // seconds
         _this.upgradeAttempts = 0;
-        _this.goBank = true;
-        _this.lastUpgradePush = pastDatePlusMins(6);
+        _this.hasRegisteredItems = false;
         return _this;
     }
     ZetchantMerchant.prototype.getName = function () {
@@ -842,66 +847,95 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         _super.prototype.beforeBusy.call(this);
         buff(this.getSkills().mluck);
         buffEveryone(this.getSkills().mluck, minutesInMs(45));
-    };
-    ZetchantMerchant.prototype.afterSystem = function () {
-        _super.prototype.afterSystem.call(this);
-        if (character.q && (character.q.compound || character.q.upgrade)) {
-            getLoggingSystem().addLogMessage("&#128296; " + this.UPGRADE_QUEUE[0].name, C_MESSAGE_TYPE_UPGRADE);
+        if (this.UPGRADE_QUEUE.length) {
+            getLoggingSystem().addLogMessage("&#128296; " + this.UPGRADE_QUEUE.length + "-" + this.UPGRADE_QUEUE[0].name, C_MESSAGE_TYPE_UPGRADE);
         }
+        getLoggingSystem().addLogMessage("&#128184;" + character.gold, C_MESSAGE_TYPE_GOLD);
     };
     ZetchantMerchant.prototype.tick = function () {
-        var _this = this;
-        // if its been X minutes since upgrade
-        var last_upgrade_push = secSince(this.lastUpgradePush);
-        getLoggingSystem().addLogMessage("&#128092;" + Math.trunc((this.LAST_UPGRADE_PUSH_THRESHOLD - last_upgrade_push) / 60) + "m", C_MESSAGE_TYPE_STALL);
-        getLoggingSystem().addLogMessage("&#128184;" + character.gold, C_MESSAGE_TYPE_GOLD);
         if (this.UPGRADE_QUEUE.length === 0) {
-            if (last_upgrade_push < this.LAST_UPGRADE_PUSH_THRESHOLD) {
-                if (isStandOpen()) {
-                    this.registerStandItems(this.VEND_LIST);
-                    return;
-                }
-                else if (this.goBank) {
-                    this.bankItems(this.UPGRADE_LIST, this.VEND_LIST);
-                    this.goBank = false;
-                }
-                else {
-                    this.openStand();
-                }
+            if (!isStandOpen()) {
+                this.openStand();
+            }
+            else if (!this.hasRegisteredItems) {
+                this.registerStandItems(this.VEND_LIST);
+            }
+            else if (this.checkBankRoutine()) {
+                this.bankItems(this.UPGRADE_LIST, this.VEND_LIST);
             }
             else {
-                for (var i = 0; i < this.UPGRADE_LIST.length; i++) {
-                    this.UPGRADE_QUEUE.push(this.UPGRADE_LIST[i]);
-                }
-                this.lastUpgradePush = new Date();
-                this.goBank = true;
-                utils_getLocationSystem().smartMove("scrolls");
-                return;
+                this.checkUpgradeItems();
             }
         }
         else {
-            var upgradeItem = void 0;
-            while (!upgradeItem && this.UPGRADE_QUEUE.length) {
-                upgradeItem = this.UPGRADE_QUEUE[0];
-                if (getInventorySystem().findItem({ name: upgradeItem.name }) === -1) {
-                    this.UPGRADE_QUEUE.shift();
-                    upgradeItem = null;
+            this.processUpgradeItems();
+        }
+    };
+    // TODO this is kind of dupe code from bank items
+    ZetchantMerchant.prototype.checkBankRoutine = function () {
+        for (var i = 0; i < character.items.length; i++) {
+            var item = character.items[i];
+            if (!item)
+                continue;
+            if (item.name === "stand0" || item.name.includes("scroll") || item.name.includes("pot"))
+                continue;
+            var shouldBank = true;
+            for (var i_1 in this.UPGRADE_LIST) {
+                var upgradeItem = this.UPGRADE_LIST[i_1];
+                if (upgradeItem.name === item.name) {
+                    shouldBank = false;
+                    break;
                 }
             }
-            if (!upgradeItem)
-                return; // no items were found
-            // TODO: go to the bank, retrieve all the <u_item.name> we can find and THEN try to upgrade
-            if (distance(character, this.SCROLL_NPC) > 100) {
-                utils_getLocationSystem().smartMove("scrolls");
-                return;
+            for (var i_2 in this.VEND_LIST) {
+                var v_item = this.VEND_LIST[i_2];
+                if (v_item.name === item.name) {
+                    shouldBank = false;
+                    break;
+                }
             }
-            buff(this.getSkills().massproduction);
-            if (upgradeItem.upgradeType === UpgradeType.COMPOUND) {
-                this.smartCompound(upgradeItem, function () { _this.upgrade_success_handler(); }, function (data) { _this.upgrade_failure_handler(data); });
+            if (shouldBank) {
+                game_log("Will bank " + item.name);
+                return true;
             }
-            else {
-                this.smartUpgrade(upgradeItem, function () { _this.upgrade_success_handler(); }, function (data) { _this.upgrade_failure_handler(data); });
+        }
+        return false;
+    };
+    ZetchantMerchant.prototype.processUpgradeItems = function () {
+        var _this = this;
+        character.q.custom_upgrading = true;
+        var upgradeItem;
+        // this is still nice because we could upgrade items multiple times
+        while (!upgradeItem && this.UPGRADE_QUEUE.length) {
+            upgradeItem = this.UPGRADE_QUEUE[0];
+            if (getInventorySystem().findItem({ name: upgradeItem.name }) === -1) {
+                this.UPGRADE_QUEUE.shift();
+                upgradeItem = null;
             }
+        }
+        if (!upgradeItem)
+            return; // no items were found - upgrade queue is now 0
+        if (distance(character, this.SCROLL_NPC) > 100) {
+            utils_getLocationSystem().smartMove("scrolls");
+            return;
+        }
+        buff(this.getSkills().massproduction);
+        if (upgradeItem.upgradeType === UpgradeType.COMPOUND) {
+            this.smartCompound(upgradeItem, function () { _this.upgrade_success_handler(); }, function (data) { _this.upgrade_failure_handler(data); });
+        }
+        else {
+            this.smartUpgrade(upgradeItem, function () { _this.upgrade_success_handler(); }, function (data) { _this.upgrade_failure_handler(data); });
+        }
+        delete character.q.custom_upgrading;
+    };
+    ZetchantMerchant.prototype.checkUpgradeItems = function () {
+        for (var i = 0; i < this.UPGRADE_LIST.length; i++) {
+            if (this.hasItem(this.UPGRADE_LIST[i])) {
+                this.UPGRADE_QUEUE.push(this.UPGRADE_LIST[i]);
+            }
+        }
+        if (this.UPGRADE_QUEUE.length) {
+            this.getItemsFromBank(this.UPGRADE_QUEUE);
         }
     };
     ZetchantMerchant.prototype.upgrade_success_handler = function () {
@@ -966,6 +1000,32 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, C_MESSAGE_TYPE_COMPOUND);
         return compound_promise;
     };
+    ZetchantMerchant.prototype.hasItem = function (upgradeItem) {
+        if (upgradeItem.upgradeType == UpgradeType.COMPOUND) {
+            var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+            if (!items)
+                return false;
+            var item_matrix = [];
+            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+                item_matrix.push([]);
+                for (var i = 0; i < items.length; i++) {
+                    if (character.items[items[i]].level === i_lvl)
+                        item_matrix[i_lvl].push(items[i]);
+                }
+            }
+            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+                if (item_matrix[i_lvl].length >= 3) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else {
+            var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
+                : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+            return item_idx != -1;
+        }
+    };
     ZetchantMerchant.prototype.openStand = function () {
         utils_getLocationSystem().smartMove(C_MERCHANT_STAND_LOCATION, "open_stand").then(function () {
             open_stand(0);
@@ -997,6 +1057,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
                 log("Listing " + item.name + " for " + list_price + " gold");
             }
         }
+        this.hasRegisteredItems = true;
     };
     ZetchantMerchant.prototype.bankItems = function (upgradeItems, vendItems) {
         return getInventorySystem().storage(0, function (item) {
@@ -1015,17 +1076,22 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             return true;
         });
     };
-    ZetchantMerchant.prototype.findItemInBank = function () {
-        character.q.banking = true;
-        if (!character.bank) {
-            utils_getLocationSystem().smartMove("bank").then(function () {
-                // TODO:
-                // character.bank has "items0" thru "itemsN"
-                // itemsN is an array with same structure as inventory
-                // re-use inventory, make the find items generic
-                delete character.q.banking;
-            });
-        }
+    ZetchantMerchant.prototype.getItemsFromBank = function (items) {
+        utils_getLocationSystem().smartMove("bank").then(function () {
+            for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
+                for (var i = 0; i < items.length; i++) {
+                    var packName = "items" + packNum;
+                    var item = items[i];
+                    var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
+                    game_log("Checked " + item.name + " on " + packName + ": " + itemIdxs);
+                    if (itemIdxs) {
+                        for (var idx = 0; idx < itemIdxs.length; idx++) {
+                            bank_retrieve(packName, itemIdxs[idx]);
+                        }
+                    }
+                }
+            }
+        });
     };
     return ZetchantMerchant;
 }(CharacterFunction));
@@ -1170,7 +1236,7 @@ var ZettWarrior = /** @class */ (function (_super) {
         for (var i = 0; i < partyMembers.length; i++) {
             if (partyMembers[i] === character.name)
                 continue;
-            start_character(partyMembers[i], partyMembers[i]);
+            start_character(partyMembers[i], "webpack");
         }
         setTimeout(function () { return ui(); }, 30000);
     };
@@ -1749,13 +1815,16 @@ var useMerchant_extends = (undefined && undefined.__extends) || (function () {
 
 
 var C_SEND_ITEM_DISTANCE = 400;
-var C_MERCHANT_INTERACTION_THRESHOLD = 300;
 var C_MERCHANT_SEND_GOLD_THRESHOLD = 500000;
+var C_INVENTORY_DEFAULT_SIZE = 3; // 2 pots + tracker
+var C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD = C_INVENTORY_DEFAULT_SIZE + 2;
 var C_ICON = "&#128093;"; // &#128176;
 var UseMerchant = /** @class */ (function (_super) {
     useMerchant_extends(UseMerchant, _super);
     function UseMerchant() {
-        return _super !== null && _super.apply(this, arguments) || this;
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.usedMerchant = false;
+        return _this;
     }
     UseMerchant.prototype.tick = function () {
         this.transferItemsToMerchant();
@@ -1763,20 +1832,21 @@ var UseMerchant = /** @class */ (function (_super) {
         this.restockPotionsAt(this.mpPotName, this.potQtyThreshold, true);
     };
     UseMerchant.prototype.transferItemsToMerchant = function () {
+        var _this = this;
+        var inventorySize = this.inventorySize();
+        var display = C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize;
+        getLoggingSystem().addLogMessage("" + C_ICON + display + this.usedMerchant, C_MESSAGE_TYPE_MERCHANT);
         var maybeTarget = get_player(this.merchantName);
-        var lastInteractionAt = secSince(this.lastMerchantInteractionAt);
-        var display = Math.trunc((C_MERCHANT_INTERACTION_THRESHOLD - lastInteractionAt));
-        getLoggingSystem().addLogMessage("" + C_ICON + (display < 0 ? 0 : display), C_MESSAGE_TYPE_MERCHANT);
-        if (lastInteractionAt > C_MERCHANT_INTERACTION_THRESHOLD) {
-            if (maybeTarget
-                && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE) {
-                this.lastMerchantInteractionAt = new Date();
-                this.sendItems(this.merchantName);
-                send_gold(this.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
-            }
-            else if (get_party()[this.merchantName] && character.name === getPartySystem().partyLeader) {
-                sendComeToMeCommand(this.merchantName, null, false);
-            }
+        if (!this.usedMerchant && maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE) {
+            this.sendItems(this.merchantName);
+            send_gold(this.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
+            this.usedMerchant = true;
+            setTimeout(function () {
+                _this.usedMerchant = false;
+            }, 5000);
+        }
+        else if (get_party()[this.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
+            sendComeToMeCommand(this.merchantName, null, false);
         }
     };
     return UseMerchant;
@@ -1841,7 +1911,7 @@ characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new Sol
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system
-new IsMerchant("Zetchant", "hpot0", "mpot0", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+new IsMerchant("Zetchant", "hpot1", "mpot1", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

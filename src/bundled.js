@@ -1962,7 +1962,7 @@ var KiteCombat = /** @class */ (function (_super) {
         change_target(target);
         getLoggingSystem().addLogMessage(kiteCombat_C_LOG_ICON + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
         var targetDistance = distance(character, target);
-        if (is_on_cooldown("attack") && targetDistance < 50) {
+        if (target.target === character.name && is_on_cooldown("attack") && targetDistance < 50) {
             move(
             // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
             // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))

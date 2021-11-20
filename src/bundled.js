@@ -238,7 +238,9 @@ var CharacterFunction = /** @class */ (function () {
     CharacterFunction.prototype.afterSystem = function () {
         loot();
     };
-    CharacterFunction.prototype.setup = function () { };
+    CharacterFunction.prototype.setup = function () {
+        fixAddLog();
+    };
     CharacterFunction.prototype.hpPotUse = function () {
         if (safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
             return;
@@ -290,7 +292,6 @@ var Character = /** @class */ (function () {
         parent.partySystem = this.partySystem;
         parent.locationSystem = this.locationSystem;
         parent.loggingSystem = this.loggingSystem;
-        fixAddLog();
         this.characterFunction.setup();
         setInterval(function () {
             _this.loggingSystem.tick();
@@ -881,6 +882,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         return "Zetchant";
     };
     ZetchantMerchant.prototype.setup = function () {
+        _super.prototype.setup.call(this);
         ui();
     };
     ZetchantMerchant.prototype.beforeBusy = function () {
@@ -893,6 +895,12 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         getLoggingSystem().addLogMessage("&#128184;" + character.gold, C_MESSAGE_TYPE_GOLD);
     };
     ZetchantMerchant.prototype.tick = function () {
+        if (character.map === "mansion") {
+            var lostearringidx = getInventorySystem().findItem({ name: "lostearring" });
+            if (lostearringidx != -1) {
+                exchange(lostearringidx);
+            }
+        }
         if (this.UPGRADE_QUEUE.length === 0) {
             if (!isStandOpen()) {
                 this.openStand();
@@ -1230,6 +1238,7 @@ var ZettexRogue = /** @class */ (function (_super) {
     };
     ZettexRogue.prototype.setup = function () {
         var _this = this;
+        _super.prototype.setup.call(this);
         getCombatSystem().setPreAttack(function (tar) {
             if (getHpPercent(tar) > 0.8)
                 useSkill(_this.getSkills().invis);
@@ -1275,6 +1284,7 @@ var ZettWarrior = /** @class */ (function (_super) {
         return "Zett";
     };
     ZettWarrior.prototype.setup = function () {
+        _super.prototype.setup.call(this);
         var partyMembers = getPartySystem().partyMembers;
         for (var i = 0; i < partyMembers.length; i++) {
             if (partyMembers[i] === character.name)
@@ -1288,6 +1298,7 @@ var ZettWarrior = /** @class */ (function (_super) {
         this.tauntTargetedPartyMember(function (tar) {
             return tar.type === "monster"
                 && tar.target != character.name
+                && tar.hp > 5000
                 && (getPartySystem().partyMembers.includes(tar.target));
         });
         getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y + 5); });

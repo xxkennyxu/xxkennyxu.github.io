@@ -849,7 +849,6 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             new UpgradeItem("wbreeches", 7),
             new UpgradeItem("wattire", 7),
             new UpgradeItem("wgloves", 7),
-            new UpgradeItem("hgloves", 7),
             new UpgradeItem("gloves1", 7),
             new UpgradeItem("coat1", 7),
             new UpgradeItem("pants1", 7),

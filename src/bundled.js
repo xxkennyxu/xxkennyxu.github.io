@@ -838,7 +838,7 @@ var C_MERCHANT_STAND_LOCATION = {
     y: 0
 };
 var C_MERCHANT_SELL_ITEM_VALUE_MULT = 4;
-var C_MERCHANT_OPENED_BANKS = 2;
+var C_MERCHANT_OPENED_BANKS = 3;
 var ZetchantMerchant = /** @class */ (function (_super) {
     zetchant_merchant_extends(ZetchantMerchant, _super);
     function ZetchantMerchant(skills) {
@@ -849,6 +849,8 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             new UpgradeItem("wbreeches", 7),
             new UpgradeItem("wattire", 7),
             new UpgradeItem("wgloves", 7),
+            new UpgradeItem("hgloves", 7),
+            new UpgradeItem("gloves1", 7),
             new UpgradeItem("coat1", 7),
             new UpgradeItem("pants1", 7),
             new UpgradeItem("shoes1", 7),
@@ -857,6 +859,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             new UpgradeItem("phelmet", 7),
             new UpgradeItem("sshield", 7),
             new UpgradeItem("firestaff", 7),
+            new UpgradeItem("stinger", 8),
             new UpgradeItem("mcape", 6),
             new UpgradeItem("ringsj", 4, UpgradeType.COMPOUND),
             new UpgradeItem("hpamulet", 4, UpgradeType.COMPOUND),
@@ -899,6 +902,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             var lostearringidx = getInventorySystem().findItem({ name: "lostearring" });
             if (lostearringidx != -1) {
                 exchange(lostearringidx);
+                return;
             }
         }
         if (this.UPGRADE_QUEUE.length === 0) {

@@ -1131,8 +1131,10 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     ZetchantMerchant.prototype.getItemsFromBank = function (items) {
         utils_getLocationSystem().smartMove("bank").then(function () {
             for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
+                var packName = "items" + packNum;
+                if (!character.bank[packName])
+                    continue;
                 for (var i = 0; i < items.length; i++) {
-                    var packName = "items" + packNum;
                     var item = items[i];
                     var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
                     game_log("Checked " + item.name + " on " + packName + ": " + itemIdxs);

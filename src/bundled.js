@@ -672,7 +672,7 @@ function bringPotionReply(name, data) {
 ;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
 
 
-var C_DO_NOT_STORE_ITEM = ["pot", "cscroll", "scroll0", "scroll1", "tracker", "stand"];
+var C_DO_NOT_STORE_ITEM = ["pot", "cscroll", "scroll0", "scroll1", "tracker", "stand", "lostearring"];
 var InventorySystem = /** @class */ (function () {
     function InventorySystem(merchantName, hpPotName, mpPotName, potQtyThreshold) {
         if (hpPotName === void 0) { hpPotName = "hpot1"; }
@@ -924,22 +924,22 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     };
     // TODO this is kind of dupe code from bank items
     ZetchantMerchant.prototype.checkBankRoutine = function () {
-        for (var i = 0; i < character.items.length; i++) {
+        var _loop_1 = function (i) {
             var item = character.items[i];
             if (!item)
-                continue;
-            if (item.name === "stand0" || item.name.includes("scroll") || item.name.includes("pot"))
-                continue;
+                return "continue";
+            if (C_DO_NOT_STORE_ITEM.find(function (element) { var _a; return (_a = item.name) === null || _a === void 0 ? void 0 : _a.includes(element); }))
+                return "continue";
             var shouldBank = true;
-            for (var i_1 in this.UPGRADE_LIST) {
-                var upgradeItem = this.UPGRADE_LIST[i_1];
+            for (var i_1 in this_1.UPGRADE_LIST) {
+                var upgradeItem = this_1.UPGRADE_LIST[i_1];
                 if (upgradeItem.name === item.name) {
                     shouldBank = false;
                     break;
                 }
             }
-            for (var i_2 in this.VEND_LIST) {
-                var v_item = this.VEND_LIST[i_2];
+            for (var i_2 in this_1.VEND_LIST) {
+                var v_item = this_1.VEND_LIST[i_2];
                 if (v_item.name === item.name) {
                     shouldBank = false;
                     break;
@@ -947,8 +947,14 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             }
             if (shouldBank) {
                 game_log("Will bank " + item.name);
-                return true;
+                return { value: true };
             }
+        };
+        var this_1 = this;
+        for (var i = 0; i < character.items.length; i++) {
+            var state_1 = _loop_1(i);
+            if (typeof state_1 === "object")
+                return state_1.value;
         }
         return false;
     };

@@ -581,13 +581,21 @@ function inventoryPreview(name, data) {
 
 
 function sendBuffRequest(name, buffName) {
-    var payload = cms_cmBuilder(BUFF_ME, utils_getLocationSystem().getSmartMoveLocation());
+    var payload = cmBuilder(BUFF_ME, getLocationSystem().getSmartMoveLocation());
     payload["content"]["buff"] = buffName;
-    cms_sendCharacterMessage(name, payload);
+    sendCharacterMessage(name, payload);
 }
 function handleBuffRequest(name, data) {
-    if (smart.moving)
-        return; // in case multiple people request at the same time
+    if (smart.moving) { // in case multiple people request at the same time
+        var destinationX = data.x;
+        var destinationY = data.y;
+        var currDestinationX = smart.x;
+        var currDestinationY = smart.y;
+        if (Math.abs(destinationX - currDestinationX) < 100 || Math.abs(destinationY - currDestinationY) < 100) {
+            game_log("New destination too close, continuing to old one...");
+            return;
+        }
+    }
     utils_getLocationSystem().smartMove(data, "buff-" + name).then(function () {
         useSkill(data.buff, get_player(name));
     });
@@ -605,7 +613,7 @@ var cms_MOVE_TO = "MOVE_TO";
 var BRING_POTION = "BRING_POTION";
 var cms_INVENTORY = "INVENTORY";
 var INVENTORY_PREVIEW = "INVENTORY_PREVIEW";
-var BUFF_ME = "BUFF_ME";
+var cms_BUFF_ME = "BUFF_ME";
 var CM_WHITELIST = ["Zettex", "Zetd", "Zett", "Zetchant", "Zetadin", "Zeter", "Zetx"];
 var C_CM_SEND_THRESHOLD = 15; // seconds
 var CM_MAP = {
@@ -664,6 +672,8 @@ function sendBringPotionCommand(name, pot, potQty) {
     cms_sendCharacterMessage(name, payload);
 }
 function bringPotionReply(name, data) {
+    if (smart.moving)
+        return;
     utils_getLocationSystem().smartMove(data, data.pot + "-" + name).then(function () {
         send_item(name, locate_item(data.pot), data.pot_qty);
     });
@@ -1176,7 +1186,6 @@ var zetd_priest_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-
 var ZetdPriest = /** @class */ (function (_super) {
     zetd_priest_extends(ZetdPriest, _super);
     function ZetdPriest() {
@@ -1194,8 +1203,6 @@ var ZetdPriest = /** @class */ (function (_super) {
                 break;
             }
         }
-        if (!character.s.mluck)
-            sendBuffRequest(getInventorySystem().merchantName, "mluck");
         getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y - 5); });
     };
     ZetdPriest.prototype.heal_party_members_percent = function (percent) {
@@ -1238,7 +1245,6 @@ var zettex_rogue_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-
 var ZettexRogue = /** @class */ (function (_super) {
     zettex_rogue_extends(ZettexRogue, _super);
     function ZettexRogue() {
@@ -1258,9 +1264,6 @@ var ZettexRogue = /** @class */ (function (_super) {
     ZettexRogue.prototype.tick = function () {
         buff(this.getSkills().rspeed);
         buffEveryone(this.getSkills().rspeed);
-        if (!character.s.mluck) {
-            sendBuffRequest(getInventorySystem().merchantName, "mluck");
-        }
         getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x - 5, character.y - 5); });
     };
     return ZettexRogue;

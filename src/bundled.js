@@ -2041,8 +2041,12 @@ characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new Sol
 // new SoloLocation("bat", "mvampire", 10),
 new SoloLocation("rat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
-characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation("rat", 5), 
+// new FollowPartyLocation(),
+new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
+// new FollowPartyLocation(),
+new SoloLocation("rat", 5), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system

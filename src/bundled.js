@@ -916,9 +916,11 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     };
     ZetchantMerchant.prototype.tick = function () {
         if (character.map === "mansion") {
-            var lostearringidx = getInventorySystem().findItem({ name: "lostearring" });
-            if (lostearringidx != -1) {
-                exchange(lostearringidx);
+            var lostearringidx_1 = getInventorySystem().findItem({ name: "lostearring" });
+            if (lostearringidx_1 != -1) {
+                utils_getLocationSystem().smartMove({ "x": "0", "y": "-283", "map": "mansion" }).then(function () {
+                    exchange(lostearringidx_1);
+                });
                 return;
             }
         }
@@ -2079,6 +2081,32 @@ function on_draw() {
 }
 //@ts-ignore
 window.on_draw = on_draw;
+/**
+ * function draw_borders(){
+  for(let x_line of G.geometry[parent.character.map].x_lines){
+    draw_line(x_line[0], x_line[1], x_line[0], x_line[2], 2,0x04f8e2)
+  }
+  for(let y_line of G.geometry[parent.character.map].y_lines){
+    draw_line(y_line[1], y_line[0], y_line[2], y_line[0], 2,0x04f8e2)
+  }
+}
+
+function draw_spawn_ranges(){
+  for (mon in G.maps[character.map].monsters) {
+      const boundary = G.maps[character.map].monsters[mon].boundary;
+      if (boundary) {
+          //Top
+          draw_line(boundary[0], boundary[1], boundary[2], boundary[1], 1, 0xBF00FF);
+          //Left
+          draw_line(boundary[0], boundary[1], boundary[0], boundary[3], 1, 0xBF00FF);
+          //Right
+          draw_line(boundary[2], boundary[3], boundary[0], boundary[3], 1, 0xBF00FF);
+          //Bottom
+          draw_line(boundary[2], boundary[3], boundary[2], boundary[1], 1, 0xBF00FF);
+      }
+  }
+}
+ */ 
 
 /******/ })()
 ;

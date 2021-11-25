@@ -774,7 +774,7 @@ var InventorySystem = /** @class */ (function () {
 }());
 
 
-;// CONCATENATED MODULE: ./src/systems/logging.ts
+;// CONCATENATED MODULE: ./src/systems/debug/logging.ts
 
 var C_MESSAGE_TYPE_MERCHANT = "t_merchant";
 var C_MESSAGE_TYPE_STALL = "t_stall";
@@ -2058,6 +2058,27 @@ function start_c(name, ms) {
 }
 //@ts-ignore
 parent.start_c = start_c;
+function on_draw() {
+    clear_drawings();
+    draw_circle(character.real_x, character.real_y, character.range);
+    var target = get_target(character);
+    if (target) {
+        draw_line(character.real_x, character.real_y, target.x, target.y);
+    }
+    if (is_moving(character)) {
+        draw_line(character.from_x, character.from_y, character.going_x, character.going_y, 1, 0x33FF42);
+    }
+    for (var id in parent.entities) {
+        var entity = parent.entities[id];
+        var entity_targ = get_target_of(entity);
+        if (entity_targ && entity_targ.name === character.name && entity.moving) {
+            draw_line(entity.from_x, entity.from_y, entity.going_x, entity.going_y, 1, 0xda0b04);
+            draw_circle(entity.x, entity.y, entity.range, 1, 0xda0b04);
+        }
+    }
+}
+//@ts-ignore
+parent.on_draw = on_draw;
 
 /******/ })()
 ;

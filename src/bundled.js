@@ -2078,7 +2078,7 @@ function on_draw() {
     }
 }
 //@ts-ignore
-parent.on_draw = on_draw;
+window.on_draw = on_draw;
 
 /******/ })()
 ;

@@ -312,8 +312,11 @@ var Character = /** @class */ (function () {
                 return;
             }
             // TODO: hack
-            if (!character.s.holidayspirit)
-                parent.socket.emit("interaction", { type: "newyear_tree" });
+            if (!character.s.holidayspirit) {
+                _this.locationSystem.smartMove("town").then(function () {
+                    parent.socket.emit("interaction", { type: "newyear_tree" });
+                });
+            }
             _this.characterFunction.beforeBusy();
             if (is_moving(character) || smart.moving || isQBusy())
                 return;
@@ -1587,6 +1590,7 @@ var LocationSystem = /** @class */ (function () {
         if (isStandOpen())
             close_stand();
         getLoggingSystem().addLogMessage("&#128099;" + (typeof dest === "object" ? destinationName : dest), C_MESSAGE_TYPE_WALKING);
+        parent.currentLocation = typeof dest === "object" ? (destinationName ? destinationName : "?") : dest;
         return smart_move(dest);
     };
     LocationSystem.prototype.getSmartMoveLocation = function (smartMoveLoc) {
@@ -1666,7 +1670,6 @@ var SoloLocation = /** @class */ (function (_super) {
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
             this.smartMove(nextLocation);
             this.atBoss = nextLocation === this.bossDestination;
-            parent.currentLocation = nextLocation;
             this.lastDestinationChangeAt = new Date();
         }
     };

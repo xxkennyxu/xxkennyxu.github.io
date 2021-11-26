@@ -1634,10 +1634,18 @@ var SoloLocation = /** @class */ (function (_super) {
     // TODO: quests
     // TODO: World bosses
     SoloLocation.prototype.tick = function () {
+        // TODO: refine this
         if (isWorldBossAliveReady("grinch")) {
             if (secSince(this.lastDestinationChangeAt) < 60)
                 return;
             this.smartMove(parent.S.grinch);
+            this.lastDestinationChangeAt = new Date();
+            return;
+        }
+        else if (isWorldBossAliveReady("snowman")) {
+            if (secSince(this.lastDestinationChangeAt) < 60)
+                return;
+            this.smartMove(parent.S.snowman);
             this.lastDestinationChangeAt = new Date();
             return;
         }

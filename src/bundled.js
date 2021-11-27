@@ -1639,8 +1639,9 @@ var SoloLocation = /** @class */ (function (_super) {
         else {
             if (secSince(this.lastDestinationChangeAt) < 60)
                 return;
-            this.smartMove(parent.S["grinch"], "?");
+            this.smartMove(parent.S["grinch"], "grinch");
             this.lastDestinationChangeAt = new Date();
+            this.atBoss = true;
         }
     };
     // TODO: quests
@@ -1656,8 +1657,9 @@ var SoloLocation = /** @class */ (function (_super) {
                 }
                 if (secSince(this.lastDestinationChangeAt) < 60)
                     continue;
-                this.smartMove(parent.S[worldBossName], "?");
+                this.smartMove(parent.S[worldBossName], worldBossName);
                 this.lastDestinationChangeAt = new Date();
+                this.atBoss = true;
                 return;
             }
         }
@@ -2048,12 +2050,14 @@ var KiteCombat = /** @class */ (function (_super) {
             return;
         change_target(target);
         getLoggingSystem().addLogMessage(kiteCombat_C_LOG_ICON + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
-        if (target.max_hp < character.attack * 2) {
+        if (!this.isBoss(target) && !this.isWorldBoss(target) && target.max_hp < character.attack * 2) {
             this.attack(target);
             return;
         }
         var targetDistance = distance(character, target);
-        if ((!target.target && targetDistance < 50) || target.target === character.name && is_on_cooldown("attack") && targetDistance < 50) {
+        if (targetDistance < 50 // i'm too close
+            // monster is targeting me and attack is on cooldown
+            || target.target === character.name && is_on_cooldown("attack") && targetDistance < 75) {
             move(
             // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
             // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))

@@ -91,16 +91,14 @@ function startChar(name) {
         ui();
     }, 20000);
 }
-function isWorldBossAliveReady(bossName) {
-    var worldBosses = parent.S;
-    if (bossName)
-        return !!worldBosses[bossName].target;
-    for (var i in worldBosses) {
-        var worldBoss = worldBosses[i];
-        if (worldBoss.target)
-            return true;
-    }
-    return false;
+function isWorldBossLive(bossName) {
+    var worldBosses = getWorldBosses();
+    return worldBosses[bossName].live ? worldBosses[bossName] : null;
+    // for (const i in worldBosses) {
+    // 	const worldBoss = worldBosses[i];
+    // 	if (worldBoss.target) return true;
+    // }
+    // return false;
 }
 function changeServer(server) {
     switch (server) {
@@ -132,10 +130,10 @@ function changeServer(server) {
     }
 }
 function getWorldBosses() {
-    var worldbosses = [];
+    var worldbosses = {};
     for (var bossName in parent.S) {
         var bossDetails = parent.S[bossName];
-        worldbosses.push(new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp));
+        worldbosses[bossName] = new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp);
     }
     return worldbosses;
 }
@@ -1366,7 +1364,7 @@ var ZettWarrior = /** @class */ (function (_super) {
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
 
 var C_IGNORE_MONSTER = ["Target Automatron"];
-var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Franky"];
+var C_BOSS_MONSTER = ["Grinch", "Snowman", "Dracul", "Phoenix", "Franky"];
 var C_ATTACK_THRESHOLD = 400;
 var C_COMBAT_HP_THRESHOLD = 6000;
 var C_COMBAT_BOSS_HP_THRESHOLD = 10000;
@@ -1623,6 +1621,7 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 })();
 
 
+var worldBossCheck = ["grinch", "snowman"];
 var SoloLocation = /** @class */ (function (_super) {
     soloLocation_extends(SoloLocation, _super);
     function SoloLocation(mobDestination, locationChangeIntervalMin, bossDestination) {
@@ -1638,20 +1637,15 @@ var SoloLocation = /** @class */ (function (_super) {
     // TODO: quests
     // TODO: World bosses
     SoloLocation.prototype.tick = function () {
-        // TODO: refine this
-        if (isWorldBossAliveReady("grinch")) {
-            if (secSince(this.lastDestinationChangeAt) < 60)
+        // TODO only do the grinch when Kane is nearby
+        for (var boss in worldBossCheck) {
+            if (isWorldBossLive(boss)) {
+                if (secSince(this.lastDestinationChangeAt) < 60)
+                    return;
+                this.smartMove(parent.S[boss], "?");
+                this.lastDestinationChangeAt = new Date();
                 return;
-            this.smartMove(parent.S.grinch);
-            this.lastDestinationChangeAt = new Date();
-            return;
-        }
-        else if (isWorldBossAliveReady("snowman")) {
-            if (secSince(this.lastDestinationChangeAt) < 60)
-                return;
-            this.smartMove(parent.S.snowman);
-            this.lastDestinationChangeAt = new Date();
-            return;
+            }
         }
         var target = get_target();
         if (target && getCombatSystem().isBossMonster(target))
@@ -2075,12 +2069,12 @@ characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new Sol
 // new SoloLocation("bat", "mvampire", 10),
 new SoloLocation("rat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), 
-// new SoloLocation("rat", 5),
-new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
-characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), 
-// new SoloLocation("rat", 5),
+characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation("rat", 5), 
+// new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
+// new FollowPartyLocation(),
+new SoloLocation("rat", 5), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system

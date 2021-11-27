@@ -119,7 +119,7 @@ function fixAddLog() {
     parent.addLogFixed = true;
 }
 function addGlobalFunctions() {
-    // Hack to make z work - this puts the function name in, which gets evaluated to be the 
+    // Hack to make z() work - this puts the function name in, which gets evaluated to be the 
     //reference of the actual function again and not the function name itself in game
     var code = "let GLOBAL_FUNCTIONS = [";
     GLOBAL_FUNCTIONS.forEach(function (f) {
@@ -130,6 +130,7 @@ function addGlobalFunctions() {
         code += f.toString() + "\n";
     });
     var library = document.createElement("script");
+    library.className = "TEST";
     library.type = "text/javascript";
     library.text = code;
     library.onerror = onerror || function () { game_log("load_code: Failed to load"); };

@@ -679,14 +679,20 @@ window.on_cm = function (name, data) {
 ;// CONCATENATED MODULE: ./src/lib/cms/cm-potion.ts
 
 
-function sendBringPotionCommand(name, pot, potQty) {
+function sendBringPotionCommand(name, pot, moveToMe, potQty) {
+    if (moveToMe === void 0) { moveToMe = true; }
     if (potQty === void 0) { potQty = 2000; }
     var payload = cms_cmBuilder(BRING_POTION, utils_getLocationSystem().getSmartMoveLocation());
     payload["content"]["pot"] = pot;
     payload["content"]["pot_qty"] = potQty;
+    payload["content"]["moveToMe"] = moveToMe;
     cms_sendCharacterMessage(name, payload);
 }
 function bringPotionReply(name, data) {
+    if (!data.moveToMe) {
+        send_item(name, locate_item(data.pot), data.pot_qty);
+        return;
+    }
     if (smart.moving) { // in case multiple people request at the same time
         var destinationX = data.x;
         var destinationY = data.y;
@@ -1924,6 +1930,7 @@ var useMerchant_extends = (undefined && undefined.__extends) || (function () {
 
 
 
+
 var C_SEND_ITEM_DISTANCE = 400;
 var C_MERCHANT_SEND_GOLD_THRESHOLD = 500000;
 var C_INVENTORY_DEFAULT_SIZE = 3; // 2 pots + tracker
@@ -1937,6 +1944,8 @@ var UseMerchant = /** @class */ (function (_super) {
         return _this;
     }
     UseMerchant.prototype.tick = function () {
+        this.hpPotQty = character.items[locate_item(this.hpPotName)].q;
+        this.mpPotQty = character.items[locate_item(this.mpPotName)].q;
         this.transferItemsToMerchant();
         this.restockPotionsAt(this.hpPotName, this.potQtyThreshold, true);
         this.restockPotionsAt(this.mpPotName, this.potQtyThreshold, true);
@@ -1950,6 +1959,8 @@ var UseMerchant = /** @class */ (function (_super) {
         if (!this.usedMerchant && maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE) {
             this.sendItems(this.merchantName);
             send_gold(this.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
+            sendBringPotionCommand(this.merchantName, this.hpPotName, false, (20 * this.potQtyThreshold - this.hpPotQty));
+            sendBringPotionCommand(this.merchantName, this.mpPotName, false, (20 * this.potQtyThreshold - this.mpPotQty));
             this.usedMerchant = true;
             setTimeout(function () {
                 _this.usedMerchant = false;

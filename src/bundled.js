@@ -262,7 +262,7 @@ var CharacterFunction = /** @class */ (function () {
         fixAddLog();
     };
     CharacterFunction.prototype.hpPotUse = function () {
-        if (safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
+        if (is_on_cooldown("use_hp") || safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
             return;
         var used = true;
         if (getHpPercent() < this.usePercent / 100)
@@ -273,7 +273,7 @@ var CharacterFunction = /** @class */ (function () {
             this.lastHpPotionUsedAt = new Date();
     };
     CharacterFunction.prototype.mpPotUse = function () {
-        if (safeties && mssince(this.lastMpPotionUsedAt) < min(200, character.ping * 3))
+        if (is_on_cooldown("use_mp") || safeties && mssince(this.lastMpPotionUsedAt) < min(200, character.ping * 3))
             return;
         var used = true;
         if (getMpPercent() < this.usePercent / 100)

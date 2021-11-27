@@ -1415,8 +1415,8 @@ var CombatSystem = /** @class */ (function () {
     /**
      * Priority:
      *  1. Follow the party leaders target
-     *  2. Kill monsters targeting me
-     *  3. Find bosses
+     *  2. Kill world bosses
+     *  3. Kill monsters targeting me
      *  3. Find bosses
      *  4. Find the closest monster [non-boss/non-ignored] (repeat this in case of respawns)
      */
@@ -1429,27 +1429,26 @@ var CombatSystem = /** @class */ (function () {
         }
         var target = this.getTargetedMonster();
         // only keep target if its targeting me
-        if (target && target.target != character.name) {
+        if (target && target.target != character.name)
             target = null;
-        }
         // Pick world boss over regular mob
         var entities = getEntities(function (entity) { return _this.isWorldBoss(entity); });
-        if (entities.length) {
-            ignoreBoss = true;
+        if (entities.length)
             return entities[0];
-        }
         // Kill monsters targeting me
         var nonBossMonstersTargetingMe = this.findNonBossMonstersTargeting();
-        if (nonBossMonstersTargetingMe.length > 1) {
+        if (nonBossMonstersTargetingMe.length) {
             ignoreBoss = true; // if there are multiple units attacking me, ignore boss for now
             target = this.getNonBossTargeting();
+            if (!target)
+                game_log("error: " + nonBossMonstersTargetingMe.length + " monsters targeting me, but target is null");
         }
+        // Pick boss monster
         if (!ignoreBoss) {
             // see if there's a boss target
             entities = getEntities(function (entity) { return _this.isBoss(entity); });
-            if (entities.length) {
-                target = entities[0];
-            }
+            if (entities.length)
+                return entities[0];
         }
         return target ? target : this.getNearestMonster();
     };

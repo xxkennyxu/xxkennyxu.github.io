@@ -1959,8 +1959,12 @@ var UseMerchant = /** @class */ (function (_super) {
         if (!this.usedMerchant && maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE) {
             this.sendItems(this.merchantName);
             send_gold(this.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
-            sendBringPotionCommand(this.merchantName, this.hpPotName, false, (20 * this.potQtyThreshold - this.hpPotQty));
-            sendBringPotionCommand(this.merchantName, this.mpPotName, false, (20 * this.potQtyThreshold - this.mpPotQty));
+            var hpPotRequestCount = 20 * this.potQtyThreshold - this.hpPotQty;
+            var mpPotRequestCount = 20 * this.potQtyThreshold - this.mpPotQty;
+            if (hpPotRequestCount > 0)
+                sendBringPotionCommand(this.merchantName, this.hpPotName, false, hpPotRequestCount);
+            if (mpPotRequestCount > 0)
+                sendBringPotionCommand(this.merchantName, this.mpPotName, false, mpPotRequestCount);
             this.usedMerchant = true;
             setTimeout(function () {
                 _this.usedMerchant = false;

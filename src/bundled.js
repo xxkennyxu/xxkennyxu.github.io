@@ -1436,13 +1436,9 @@ var CombatSystem = /** @class */ (function () {
         if (entities.length)
             return entities[0];
         // Kill monsters targeting me
-        var nonBossMonstersTargetingMe = this.findNonBossMonstersTargeting();
-        if (nonBossMonstersTargetingMe.length) {
-            ignoreBoss = true; // if there are multiple units attacking me, ignore boss for now
-            target = this.getNonBossTargeting();
-            if (!target)
-                game_log("error: " + nonBossMonstersTargetingMe.length + " monsters targeting me, but target is null");
-        }
+        entities = this.findNonBossMonstersTargeting();
+        if (entities.length)
+            return entities[0];
         // Pick boss monster
         if (!ignoreBoss) {
             // see if there's a boss target
@@ -1451,20 +1447,6 @@ var CombatSystem = /** @class */ (function () {
                 return entities[0];
         }
         return target ? target : this.getNearestMonster();
-    };
-    CombatSystem.prototype.getNonBossTargeting = function (target) {
-        if (target === void 0) { target = character; }
-        for (var id in parent.entities) {
-            var current = parent.entities[id];
-            if (current.type != "monster" || !current.visible || current.dead)
-                continue;
-            if (this.isBoss(current))
-                continue;
-            if (current.target === target.name) {
-                return current;
-            }
-        }
-        return null;
     };
     CombatSystem.prototype.shouldFollowLeaderAttack = function () {
         if (character.name === getPartySystem().partyLeader)
@@ -1513,19 +1495,11 @@ var CombatSystem = /** @class */ (function () {
         return target;
     };
     CombatSystem.prototype.findNonBossMonstersTargeting = function (target) {
+        var _this = this;
         if (target === void 0) { target = character; }
-        var targetingMe = [];
-        for (var id in parent.entities) {
-            var current = parent.entities[id];
-            if (current.type != "monster")
-                continue;
-            if (this.isBoss(current))
-                continue;
-            if (current.target === target.name) {
-                targetingMe.push(current);
-            }
-        }
-        return targetingMe;
+        return getEntities(function (current) {
+            return current.type === "monster" && !_this.isBoss(current) && current.target === target.name;
+        });
     };
     CombatSystem.prototype.isIgnoredMonster = function (target) {
         return target && C_IGNORE_MONSTER.includes(target.name);

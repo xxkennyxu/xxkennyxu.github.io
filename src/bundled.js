@@ -92,9 +92,8 @@ function startChar(name) {
     }, 20000);
 }
 function isWorldBossLive(bossName) {
-    var _a;
     var worldBosses = getWorldBosses();
-    return ((_a = worldBosses[bossName]) === null || _a === void 0 ? void 0 : _a.live) ? worldBosses[bossName] : null;
+    return worldBosses[bossName] && worldBosses[bossName].live ? worldBosses[bossName] : null;
     // for (const i in worldBosses) {
     // 	const worldBoss = worldBosses[i];
     // 	if (worldBoss.target) return true;
@@ -134,7 +133,7 @@ function getWorldBosses() {
     var worldbosses = {};
     for (var bossName in parent.S) {
         var bossDetails = parent.S[bossName];
-        worldbosses[bossName] = new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp);
+        worldbosses[bossName] = new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp, bossDetails.target);
     }
     return worldbosses;
 }
@@ -1231,7 +1230,7 @@ var ZetdPriest = /** @class */ (function (_super) {
         this.heal_party_members_percent(85);
         for (var id in parent.entities) {
             var current = parent.entities[id];
-            if (getCombatSystem().isBossMonster(current) && current.target && current.target != character.name && !current.s.cursed) {
+            if (getCombatSystem().isBoss(current) && current.target && current.target != character.name && !current.s.cursed) {
                 useSkill(this.getSkills().curse, current);
                 break;
             }
@@ -1372,7 +1371,8 @@ var ZettWarrior = /** @class */ (function (_super) {
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
 
 var C_IGNORE_MONSTER = ["Target Automatron"];
-var C_BOSS_MONSTER = ["Grinch", "Snowman", "Dracul", "Phoenix", "Franky"];
+var C_BOSS_MONSTER = ["Dracul", "Phoenix"];
+var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
 var C_ATTACK_THRESHOLD = 400;
 var C_COMBAT_HP_THRESHOLD = 6000;
 var C_COMBAT_BOSS_HP_THRESHOLD = 10000;
@@ -1417,6 +1417,7 @@ var CombatSystem = /** @class */ (function () {
      *  1. Follow the party leaders target
      *  2. Kill monsters targeting me
      *  3. Find bosses
+     *  3. Find bosses
      *  4. Find the closest monster [non-boss/non-ignored] (repeat this in case of respawns)
      */
     CombatSystem.prototype.getTarget = function (ignoreBoss) {
@@ -1427,9 +1428,17 @@ var CombatSystem = /** @class */ (function () {
             return getPartySystem().getPartyLeaderTarget();
         }
         var target = this.getTargetedMonster();
+        // only keep target if its targeting me
         if (target && target.target != character.name) {
-            target = null; // only keep target if its targeting me
+            target = null;
         }
+        // Pick world boss over regular mob
+        var entities = getEntities(function (entity) { return _this.isWorldBoss(entity); });
+        if (entities.length) {
+            ignoreBoss = true;
+            return entities[0];
+        }
+        // Kill monsters targeting me
         var nonBossMonstersTargetingMe = this.findNonBossMonstersTargeting();
         if (nonBossMonstersTargetingMe.length > 1) {
             ignoreBoss = true; // if there are multiple units attacking me, ignore boss for now
@@ -1437,7 +1446,7 @@ var CombatSystem = /** @class */ (function () {
         }
         if (!ignoreBoss) {
             // see if there's a boss target
-            var entities = getEntities(function (entity) { return _this.isBossMonster(entity); });
+            entities = getEntities(function (entity) { return _this.isBoss(entity); });
             if (entities.length) {
                 target = entities[0];
             }
@@ -1450,7 +1459,7 @@ var CombatSystem = /** @class */ (function () {
             var current = parent.entities[id];
             if (current.type != "monster" || !current.visible || current.dead)
                 continue;
-            if (this.isBossMonster(current))
+            if (this.isBoss(current))
                 continue;
             if (current.target === target.name) {
                 return current;
@@ -1492,7 +1501,7 @@ var CombatSystem = /** @class */ (function () {
                 continue;
             if (!can_move_to(current))
                 continue;
-            if (this.isBossMonster(current))
+            if (this.isBoss(current))
                 continue;
             if (this.isIgnoredMonster(current))
                 continue;
@@ -1511,7 +1520,7 @@ var CombatSystem = /** @class */ (function () {
             var current = parent.entities[id];
             if (current.type != "monster")
                 continue;
-            if (this.isBossMonster(current))
+            if (this.isBoss(current))
                 continue;
             if (current.target === target.name) {
                 targetingMe.push(current);
@@ -1522,13 +1531,16 @@ var CombatSystem = /** @class */ (function () {
     CombatSystem.prototype.isIgnoredMonster = function (target) {
         return target && C_IGNORE_MONSTER.includes(target.name);
     };
-    CombatSystem.prototype.isBossMonster = function (target) {
+    CombatSystem.prototype.isBoss = function (target) {
         return target && C_BOSS_MONSTER.includes(target.name);
+    };
+    CombatSystem.prototype.isWorldBoss = function (target) {
+        return target && C_WORLD_BOSS_MONSTER.includes(target.name);
     };
     CombatSystem.prototype.findTarget = function () {
         var target = this.getTarget();
         if (target) {
-            if (target.max_hp > C_COMBAT_BOSS_HP_THRESHOLD && this.isBossMonster(target)) {
+            if (this.isBoss(target) && target.max_hp > C_COMBAT_BOSS_HP_THRESHOLD) {
                 var partyMemberCount = 0;
                 var partyMembers = getPartySystem().combatPartyMembers;
                 for (var i in partyMembers) {
@@ -1642,22 +1654,42 @@ var SoloLocation = /** @class */ (function (_super) {
         parent.currentLocation = "?";
         return _this;
     }
+    SoloLocation.prototype.handleGrinch = function (worldBoss) {
+        if (!worldBoss.target)
+            return;
+        var kane = parent.entities["Kane"];
+        if (kane) {
+            if (distance(character, kane) > 100) {
+                this.smartMove(find_npc("citizen0"));
+            }
+        }
+        else {
+            if (secSince(this.lastDestinationChangeAt) < 60)
+                return;
+            this.smartMove(parent.S["grinch"], "?");
+            this.lastDestinationChangeAt = new Date();
+        }
+    };
     // TODO: quests
     // TODO: World bosses
     SoloLocation.prototype.tick = function () {
-        // TODO only do the grinch when Kane is nearby
         for (var boss in worldBossCheck) {
-            var worldBoss = isWorldBossLive(worldBossCheck[boss]);
-            if (worldBoss && worldBoss.target) {
-                if (secSince(this.lastDestinationChangeAt) < 60)
+            var worldBossName = worldBossCheck[boss];
+            var worldBoss = isWorldBossLive(worldBossName);
+            if (worldBoss) {
+                if (worldBossName == "grinch") {
+                    this.handleGrinch(worldBoss);
                     return;
-                this.smartMove(parent.S[worldBossCheck[boss]], "?");
+                }
+                if (secSince(this.lastDestinationChangeAt) < 60)
+                    continue;
+                this.smartMove(parent.S[worldBossName], "?");
                 this.lastDestinationChangeAt = new Date();
                 return;
             }
         }
         var target = get_target();
-        if (target && getCombatSystem().isBossMonster(target))
+        if (target && getCombatSystem().isBoss(target))
             return;
         var nextLocation;
         if (!this.bossDestination || this.atBoss || parent.currentLocation === "?" || character.map === "bank") {
@@ -2104,27 +2136,27 @@ function start_c(name, ms) {
 }
 //@ts-ignore
 parent.start_c = start_c;
-function on_draw() {
-    clear_drawings();
-    draw_circle(character.real_x, character.real_y, character.range);
-    var target = get_target(character);
-    if (target) {
-        draw_line(character.real_x, character.real_y, target.x, target.y);
-    }
-    if (is_moving(character)) {
-        draw_line(character.from_x, character.from_y, character.going_x, character.going_y, 1, 0x33FF42);
-    }
-    for (var id in parent.entities) {
-        var entity = parent.entities[id];
-        var entity_targ = get_target_of(entity);
-        if (entity_targ && entity_targ.name === character.name && entity.moving) {
-            draw_line(entity.from_x, entity.from_y, entity.going_x, entity.going_y, 1, 0xda0b04);
-            draw_circle(entity.x, entity.y, entity.range, 1, 0xda0b04);
-        }
-    }
-}
-//@ts-ignore
-window.on_draw = on_draw;
+// function on_draw(){
+// 	clear_drawings();
+// 	draw_circle(character.real_x, character.real_y, character.range);
+// 	const target = get_target(character);
+// 	if(target){
+// 		draw_line(character.real_x, character.real_y, target.x, target.y);
+// 	}
+// 	if(is_moving(character)){
+// 		draw_line(character.from_x, character.from_y, character.going_x, character.going_y, 1, 0x33FF42);
+// 	}
+// 	for(const id in parent.entities){
+// 		const entity = parent.entities[id];
+// 		const entity_targ = get_target_of(entity);
+// 		if(entity_targ && entity_targ.name === character.name && entity.moving) {
+// 			draw_line(entity.from_x, entity.from_y, entity.going_x, entity.going_y, 1, 0xda0b04);
+// 			draw_circle(entity.x, entity.y, entity.range, 1, 0xda0b04);
+// 		}
+// 	}
+// }
+// //@ts-ignore
+// window.on_draw = on_draw;
 /**
  * function draw_borders(){
   for(let x_line of G.geometry[parent.character.map].x_lines){

@@ -227,12 +227,22 @@ var WorldBoss = /** @class */ (function () {
     return WorldBoss;
 }());
 
+var SmartMoveLocation = /** @class */ (function () {
+    function SmartMoveLocation() {
+    }
+    return SmartMoveLocation;
+}());
+
+// TODO: game events
+// http://adventure.land/docs/code/game/events
+// TODO: char events
+// http://adventure.land/docs/code/character/events
 
 ;// CONCATENATED MODULE: ./src/characters/character.ts
 
 var CharacterFunction = /** @class */ (function () {
     function CharacterFunction(skills, usePercent) {
-        if (usePercent === void 0) { usePercent = 50; }
+        if (usePercent === void 0) { usePercent = 75; }
         this.skills = skills;
         this.usePercent = usePercent;
         this.lastHpPotionUsedAt = new Date();
@@ -550,6 +560,7 @@ function sendComingRequest(name) {
     cms_sendCharacterMessage(name, payload);
 }
 function sendComeToMeCommand(name, data, isReply) {
+    if (isReply === void 0) { isReply = false; }
     var payload = cms_cmBuilder(COME_TO_ME, utils_getLocationSystem().getSmartMoveLocation());
     cms_sendCharacterMessage(name, payload, isReply);
 }
@@ -714,14 +725,14 @@ function bringPotionReply(name, data) {
 
 var C_DO_NOT_STORE_ITEM = ["pot", "cscroll", "scroll0", "scroll1", "tracker", "stand", "lostearring"];
 var InventorySystem = /** @class */ (function () {
-    function InventorySystem(merchantName, hpPotName, mpPotName, potQtyThreshold) {
+    function InventorySystem(merchantName, potQtyThreshold, hpPotName, mpPotName) {
+        if (potQtyThreshold === void 0) { potQtyThreshold = 100; }
         if (hpPotName === void 0) { hpPotName = "hpot1"; }
         if (mpPotName === void 0) { mpPotName = "mpot1"; }
-        if (potQtyThreshold === void 0) { potQtyThreshold = 100; }
         this.merchantName = merchantName;
+        this.potQtyThreshold = potQtyThreshold;
         this.hpPotName = hpPotName;
         this.mpPotName = mpPotName;
-        this.potQtyThreshold = potQtyThreshold;
     }
     InventorySystem.prototype.restockPotionsAt = function (pot, potQty, useCmRestock) {
         if (potQty === -1)
@@ -731,8 +742,9 @@ var InventorySystem = /** @class */ (function () {
                 sendBringPotionCommand(this.merchantName, pot);
             }
             else {
-                utils_getLocationSystem().smartMove("town");
-                buy(pot, potQty);
+                utils_getLocationSystem().smartMove("town").then(function () {
+                    buy(pot, potQty);
+                });
             }
         }
     };
@@ -1227,7 +1239,7 @@ var ZetdPriest = /** @class */ (function (_super) {
         return "Zetd";
     };
     ZetdPriest.prototype.tick = function () {
-        this.heal_party_members_percent(85);
+        this.heal_party_members_percent(75);
         for (var id in parent.entities) {
             var current = parent.entities[id];
             if (getCombatSystem().isBoss(current) && current.target && current.target != character.name && !current.s.cursed) {
@@ -1514,16 +1526,17 @@ var CombatSystem = /** @class */ (function () {
         var target = this.getTarget();
         if (target) {
             if (this.isBoss(target) && target.max_hp > C_COMBAT_BOSS_HP_THRESHOLD) {
-                var partyMemberCount = 0;
-                var partyMembers = getPartySystem().combatPartyMembers;
-                for (var i in partyMembers) {
-                    var party_member = partyMembers[i];
+                var combatPartyMemberCount = 0;
+                var combatPartyMembers = getPartySystem().combatPartyMembers;
+                for (var i in combatPartyMembers) {
+                    var party_member = combatPartyMembers[i];
                     var player = get_player(party_member);
-                    if (player && player.visible) {
-                        partyMemberCount++;
+                    if (player && player.visible && distance(character, player) < 200) {
+                        combatPartyMemberCount++;
                     }
                 }
-                if (partyMemberCount < 3) {
+                if (combatPartyMemberCount != 3) {
+                    getPartySystem().assembleCombatMembers();
                     return this.getTarget(true);
                 }
             }
@@ -1645,7 +1658,6 @@ var SoloLocation = /** @class */ (function (_super) {
         }
     };
     // TODO: quests
-    // TODO: World bosses
     SoloLocation.prototype.tick = function () {
         for (var boss in worldBossCheck) {
             var worldBossName = worldBossCheck[boss];
@@ -1689,15 +1701,19 @@ var SoloLocation = /** @class */ (function (_super) {
 
 ;// CONCATENATED MODULE: ./src/systems/party.ts
 
+
 var PartySystem = /** @class */ (function () {
     function PartySystem(partyLeader, partyMembers) {
         var _this = this;
         this.partyLeader = partyLeader;
         this.partyMembers = partyMembers;
+        this.sentPartyRequest = false;
+        // override event handlers
         window.on_party_request = function (name) {
             if (_this.partyMembers.includes(name))
                 accept_party_request(name);
         };
+        // override event handlers
         window.on_party_invite = function (name) {
             if (_this.partyMembers.includes(name))
                 accept_party_invite(name);
@@ -1711,10 +1727,14 @@ var PartySystem = /** @class */ (function () {
         }, 1000);
     }
     PartySystem.prototype.tick = function () {
+        var _this = this;
         if (character.name === this.partyLeader)
             return;
-        if (!parent.party[this.partyLeader]) {
+        if (!parent.party[this.partyLeader] && !this.sentPartyRequest) {
             send_party_request(this.partyLeader);
+            this.sentPartyRequest = true;
+            // avoid spamming requests
+            setTimeout(function () { return _this.sentPartyRequest = false; }, 5000);
         }
     };
     PartySystem.prototype.getPartyLeaderTarget = function () {
@@ -1749,6 +1769,11 @@ var PartySystem = /** @class */ (function () {
             condFunc();
         }
         return conditionCount;
+    };
+    PartySystem.prototype.assembleCombatMembers = function () {
+        this.combatPartyMembers.forEach(function (name) {
+            sendComeToMeCommand(name, null, false);
+        });
     };
     return PartySystem;
 }());
@@ -1981,7 +2006,7 @@ var UseMerchant = /** @class */ (function (_super) {
             }, 5000);
         }
         else if (get_party()[this.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
-            sendComeToMeCommand(this.merchantName, null, false);
+            sendComeToMeCommand(this.merchantName);
         }
     };
     return UseMerchant;
@@ -2105,7 +2130,7 @@ new SoloLocation("rat", 5), new LoggingSystem(), new PartySystem("Zett", C_FULL_
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system
-new IsMerchant("Zetchant", "hpot1", "mpot1", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+new IsMerchant("Zetchant", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

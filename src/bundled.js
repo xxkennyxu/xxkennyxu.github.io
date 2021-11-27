@@ -1240,7 +1240,7 @@ var ZetdPriest = /** @class */ (function (_super) {
         return "Zetd";
     };
     ZetdPriest.prototype.tick = function () {
-        this.heal_party_members_percent(75);
+        this.heal_party_members_percent(65);
         for (var id in parent.entities) {
             var current = parent.entities[id];
             if (getCombatSystem().isBoss(current) && current.target && current.target != character.name && !current.s.cursed) {

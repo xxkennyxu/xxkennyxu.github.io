@@ -137,7 +137,7 @@ function addGlobalFunctions() {
 function z() {
     var functionList = "";
     GLOBAL_FUNCTIONS.forEach(function (f) {
-        functionList += f + ", ";
+        functionList += f.name + ", ";
     });
     game_log(functionList);
 }

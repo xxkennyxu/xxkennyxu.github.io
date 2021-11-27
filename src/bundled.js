@@ -1662,7 +1662,7 @@ var SoloLocation = /** @class */ (function (_super) {
             }
         }
         var target = get_target();
-        if (target && getCombatSystem().isBoss(target))
+        if (target && (getCombatSystem().isBoss(target) || getCombatSystem().isWorldBoss(target)))
             return;
         var nextLocation;
         if (!this.bossDestination || this.atBoss || parent.currentLocation === "?" || character.map === "bank") {

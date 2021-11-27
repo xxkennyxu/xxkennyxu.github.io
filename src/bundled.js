@@ -215,7 +215,7 @@ var FindItemParameters = /** @class */ (function () {
 }
  */
 var WorldBoss = /** @class */ (function () {
-    function WorldBoss(name, x, y, live, map, hp, maxHp) {
+    function WorldBoss(name, x, y, live, map, hp, maxHp, target) {
         this.name = name;
         this.x = x;
         this.y = y;
@@ -223,6 +223,7 @@ var WorldBoss = /** @class */ (function () {
         this.map = map;
         this.hp = hp;
         this.maxHp = maxHp;
+        this.target = target;
     }
     return WorldBoss;
 }());
@@ -1646,7 +1647,8 @@ var SoloLocation = /** @class */ (function (_super) {
     SoloLocation.prototype.tick = function () {
         // TODO only do the grinch when Kane is nearby
         for (var boss in worldBossCheck) {
-            if (isWorldBossLive(worldBossCheck[boss])) {
+            var worldBoss = isWorldBossLive(worldBossCheck[boss]);
+            if (worldBoss && worldBoss.target) {
                 if (secSince(this.lastDestinationChangeAt) < 60)
                     return;
                 this.smartMove(parent.S[worldBossCheck[boss]], "?");

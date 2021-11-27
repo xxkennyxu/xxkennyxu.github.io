@@ -3,6 +3,7 @@
 var __webpack_exports__ = {};
 
 ;// CONCATENATED MODULE: ./src/lib/utils.ts
+var GLOBAL_FUNCTIONS = [zUi, zChar];
 function getPartySystem() {
     return parent.partySystem;
 }
@@ -53,52 +54,12 @@ function getMpPercent(target) {
 function isStandOpen() {
     return character.stand != false;
 }
-function ui() {
-    var iframes = parent.$('#iframelist iframe');
-    for (var i in iframes) {
-        var iframe = iframes[i];
-        if (!iframe.contentDocument)
-            continue;
-        iframe.contentDocument.body.style.marginTop = "1px";
-        iframe.contentDocument.body.style.marginLeft = "";
-        iframe.contentDocument.body.style.marginRight = "";
-        iframe.contentDocument.body.style.marginBottom = "";
-        iframe.contentDocument.body.getElementsByTagName("div")[0].style.fontSize = "8px";
-        iframe.contentDocument.body.getElementsByTagName("div")[0].style.marginBottom = "";
-        iframe.contentDocument.body.getElementsByTagName("div")[0].style.border = "";
-        iframe.contentDocument.body.getElementsByTagName("div")[1].style.fontSize = "15px";
-    }
-}
 function isQBusy() {
     return Object.keys(character.q).length != 0;
-}
-function fixAddLog() {
-    if (parent.addLogFixed) {
-        return;
-    }
-    var oldAddLog = parent.add_log;
-    var regex = /killed|gold/;
-    parent.add_log = function (message, color) {
-        if (!message.match(regex)) {
-            oldAddLog(message, color);
-        }
-    };
-    parent.addLogFixed = true;
-}
-function startChar(name) {
-    start_character(name);
-    setTimeout(function () {
-        ui();
-    }, 20000);
 }
 function isWorldBossLive(bossName) {
     var worldBosses = getWorldBosses();
     return worldBosses[bossName] && worldBosses[bossName].live ? worldBosses[bossName] : null;
-    // for (const i in worldBosses) {
-    // 	const worldBoss = worldBosses[i];
-    // 	if (worldBoss.target) return true;
-    // }
-    // return false;
 }
 function changeServer(server) {
     switch (server) {
@@ -143,6 +104,57 @@ function timeRemainingInSeconds(timeThresholdInSeconds, dateTime) {
 function trimString(inputString, stringLength) {
     if (stringLength === void 0) { stringLength = 3; }
     return inputString.substring(0, Math.min(stringLength, inputString.length));
+}
+function fixAddLog() {
+    if (parent.addLogFixed) {
+        return;
+    }
+    var oldAddLog = parent.add_log;
+    var regex = /killed|gold/;
+    parent.add_log = function (message, color) {
+        if (!message.match(regex)) {
+            oldAddLog(message, color);
+        }
+    };
+    parent.addLogFixed = true;
+}
+function addGlobalFunctions() {
+    var code = "";
+    GLOBAL_FUNCTIONS.forEach(function (f) {
+        code += f.toString() + "\n";
+    });
+    var library = document.createElement("script");
+    library.type = "text/javascript";
+    library.text = code;
+    library.onerror = onerror || function () { game_log("load_code: Failed to load"); };
+    document.getElementsByTagName("head")[0].appendChild(library);
+}
+function zChar(name, slot) {
+    if (slot) {
+        start_character(name, slot);
+    }
+    else {
+        start_character(name, "webpack");
+    }
+    setTimeout(function () {
+        zUi();
+    }, 2000);
+}
+function zUi() {
+    var iframes = parent.$('#iframelist iframe');
+    for (var i in iframes) {
+        var iframe = iframes[i];
+        if (!iframe.contentDocument)
+            continue;
+        iframe.contentDocument.body.style.marginTop = "1px";
+        iframe.contentDocument.body.style.marginLeft = "";
+        iframe.contentDocument.body.style.marginRight = "";
+        iframe.contentDocument.body.style.marginBottom = "";
+        iframe.contentDocument.body.getElementsByTagName("div")[0].style.fontSize = "8px";
+        iframe.contentDocument.body.getElementsByTagName("div")[0].style.marginBottom = "";
+        iframe.contentDocument.body.getElementsByTagName("div")[0].style.border = "";
+        iframe.contentDocument.body.getElementsByTagName("div")[1].style.fontSize = "15px";
+    }
 }
 var Server;
 (function (Server) {
@@ -260,6 +272,7 @@ var CharacterFunction = /** @class */ (function () {
     };
     CharacterFunction.prototype.setup = function () {
         fixAddLog();
+        addGlobalFunctions();
     };
     CharacterFunction.prototype.hpPotUse = function () {
         if (is_on_cooldown("use_hp") || safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
@@ -938,7 +951,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     };
     ZetchantMerchant.prototype.setup = function () {
         _super.prototype.setup.call(this);
-        ui();
+        zUi();
     };
     ZetchantMerchant.prototype.beforeBusy = function () {
         _super.prototype.beforeBusy.call(this);
@@ -1351,7 +1364,7 @@ var ZettWarrior = /** @class */ (function (_super) {
                 continue;
             start_character(partyMembers[i], "webpack");
         }
-        setTimeout(function () { return ui(); }, 30000);
+        setTimeout(function () { return zUi(); }, 30000);
     };
     ZettWarrior.prototype.tick = function () {
         // Party Logic

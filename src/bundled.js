@@ -119,8 +119,9 @@ function fixAddLog() {
     parent.addLogFixed = true;
 }
 function addGlobalFunctions() {
-    // Hack to make z work
-    var code = "let GLOBAL_FUNCTIONS = [foo,";
+    // Hack to make z work - this puts the function name in, which gets evaluated to be the 
+    //reference of the actual function again and not the function name itself in game
+    var code = "let GLOBAL_FUNCTIONS = [";
     GLOBAL_FUNCTIONS.forEach(function (f) {
         code += f.name + ",";
     });
@@ -139,7 +140,7 @@ function z() {
     GLOBAL_FUNCTIONS.forEach(function (f) {
         functionList += f.name + ", ";
     });
-    game_log(functionList);
+    game_log("Available Functions: [" + functionList + "]");
 }
 function zChar(name, slot) {
     if (slot) {

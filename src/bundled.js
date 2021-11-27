@@ -92,8 +92,9 @@ function startChar(name) {
     }, 20000);
 }
 function isWorldBossLive(bossName) {
+    var _a;
     var worldBosses = getWorldBosses();
-    return worldBosses[bossName].live ? worldBosses[bossName] : null;
+    return ((_a = worldBosses[bossName]) === null || _a === void 0 ? void 0 : _a.live) ? worldBosses[bossName] : null;
     // for (const i in worldBosses) {
     // 	const worldBoss = worldBosses[i];
     // 	if (worldBoss.target) return true;
@@ -1645,10 +1646,10 @@ var SoloLocation = /** @class */ (function (_super) {
     SoloLocation.prototype.tick = function () {
         // TODO only do the grinch when Kane is nearby
         for (var boss in worldBossCheck) {
-            if (isWorldBossLive(boss)) {
+            if (isWorldBossLive(worldBossCheck[boss])) {
                 if (secSince(this.lastDestinationChangeAt) < 60)
                     return;
-                this.smartMove(parent.S[boss], "?");
+                this.smartMove(parent.S[worldBossCheck[boss]], "?");
                 this.lastDestinationChangeAt = new Date();
                 return;
             }

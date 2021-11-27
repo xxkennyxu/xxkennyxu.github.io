@@ -320,15 +320,16 @@ var Character = /** @class */ (function () {
                 parent.currentLocation = "?";
                 return;
             }
+            _this.characterFunction.beforeBusy();
+            if (is_moving(character) || smart.moving || isQBusy())
+                return;
             // TODO: hack
             if (!character.s.holidayspirit) {
                 _this.locationSystem.smartMove("town").then(function () {
                     parent.socket.emit("interaction", { type: "newyear_tree" });
                 });
-            }
-            _this.characterFunction.beforeBusy();
-            if (is_moving(character) || smart.moving || isQBusy())
                 return;
+            }
             _this.characterFunction.tick();
             _this.systemFunc();
             _this.characterFunction.afterSystem();

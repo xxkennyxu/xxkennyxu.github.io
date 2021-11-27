@@ -3,7 +3,7 @@
 var __webpack_exports__ = {};
 
 ;// CONCATENATED MODULE: ./src/lib/utils.ts
-var GLOBAL_FUNCTIONS = [zUi, zChar];
+var GLOBAL_FUNCTIONS = [zGlobal, zUi, zChar];
 function getPartySystem() {
     return parent.partySystem;
 }
@@ -129,6 +129,13 @@ function addGlobalFunctions() {
     library.onerror = onerror || function () { game_log("load_code: Failed to load"); };
     document.getElementsByTagName("head")[0].appendChild(library);
 }
+function zGlobal() {
+    var functionList = "";
+    GLOBAL_FUNCTIONS.forEach(function (f) {
+        functionList += f.name + ", ";
+    });
+    game_log(functionList);
+}
 function zChar(name, slot) {
     if (slot) {
         start_character(name, slot);
@@ -138,7 +145,7 @@ function zChar(name, slot) {
     }
     setTimeout(function () {
         zUi();
-    }, 2000);
+    }, 5000);
 }
 function zUi() {
     var iframes = parent.$('#iframelist iframe');

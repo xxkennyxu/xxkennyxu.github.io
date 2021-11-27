@@ -3,7 +3,7 @@
 var __webpack_exports__ = {};
 
 ;// CONCATENATED MODULE: ./src/lib/utils.ts
-var GLOBAL_FUNCTIONS = [zGlobal, zUi, zChar];
+var GLOBAL_FUNCTIONS = [z, zUi, zChar];
 function getPartySystem() {
     return parent.partySystem;
 }
@@ -119,7 +119,12 @@ function fixAddLog() {
     parent.addLogFixed = true;
 }
 function addGlobalFunctions() {
-    var code = "";
+    // Hack to make z work
+    var code = "let GLOBAL_FUNCTIONS = [";
+    GLOBAL_FUNCTIONS.forEach(function (f) {
+        code += f.name + ",";
+    });
+    code = code.substring(0, code.length - 1) + "];\n";
     GLOBAL_FUNCTIONS.forEach(function (f) {
         code += f.toString() + "\n";
     });
@@ -129,10 +134,10 @@ function addGlobalFunctions() {
     library.onerror = onerror || function () { game_log("load_code: Failed to load"); };
     document.getElementsByTagName("head")[0].appendChild(library);
 }
-function zGlobal() {
+function z() {
     var functionList = "";
     GLOBAL_FUNCTIONS.forEach(function (f) {
-        functionList += f.name + ", ";
+        functionList += f + ", ";
     });
     game_log(functionList);
 }

@@ -120,7 +120,7 @@ function fixAddLog() {
 }
 function addGlobalFunctions() {
     // Hack to make z work
-    var code = "let GLOBAL_FUNCTIONS = [";
+    var code = "let GLOBAL_FUNCTIONS = [foo,";
     GLOBAL_FUNCTIONS.forEach(function (f) {
         code += f.name + ",";
     });

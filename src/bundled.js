@@ -118,9 +118,9 @@ function fixAddLog() {
     };
     parent.addLogFixed = true;
 }
-function addButtonToUI(buttonText, func) {
-    var button = "div class=\"gamebutton promode\" onclick=\"" + func.name + "()\">MY_LABEL</div>";
-}
+// export function addButtonToUI(buttonText: string, func: Function) {
+// 	const button = `div class="gamebutton promode" onclick="${func.name}()">MY_LABEL</div>`;
+// }
 /**
  * Snippet executor runs in an iFrame. In order for the iFrame to get access to these functions, they need
  * to be added to the IFRAME'S <head>.
@@ -1521,6 +1521,7 @@ var CombatSystem = /** @class */ (function () {
         }
         // 5 - Find nearest monster
         if (!targetResult.target) {
+            getPartySystem().assembleCombatMembers();
             return { target: this.getNearestMonster(), attackType: 5 };
         }
         return targetResult;
@@ -2240,14 +2241,14 @@ var characters = {};
 var C_FULL_PARTY_MEMBERS = ["Zett", "Zetchant", "Zettex", "Zetd", "Zeter", "Zetx", "Zetadin"];
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
 // new SoloLocation("bat", "mvampire", 10),
-new SoloLocation("rat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation("bat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation("rat", 5), 
+characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation("bat", 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
 // new FollowPartyLocation(),
-new SoloLocation("rat", 5), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+new SoloLocation("bat", 5), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system

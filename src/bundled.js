@@ -1365,72 +1365,6 @@ var ZettexRogue = /** @class */ (function (_super) {
 }(CharacterFunction));
 
 
-;// CONCATENATED MODULE: ./src/characters/zett-warrior.ts
-var zett_warrior_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-
-var ZettWarrior = /** @class */ (function (_super) {
-    zett_warrior_extends(ZettWarrior, _super);
-    function ZettWarrior() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    ZettWarrior.prototype.getName = function () {
-        return "Zett";
-    };
-    ZettWarrior.prototype.setup = function () {
-        _super.prototype.setup.call(this);
-        var partyMembers = getPartySystem().partyMembers;
-        for (var i = 0; i < partyMembers.length; i++) {
-            if (partyMembers[i] === character.name)
-                continue;
-            start_character(partyMembers[i], "webpack");
-        }
-        setTimeout(function () { return zUi(); }, 30000);
-    };
-    ZettWarrior.prototype.tick = function () {
-        // Party Logic
-        this.tauntTargetedPartyMember(function (tar) {
-            return tar.type === "monster"
-                && tar.target != character.name
-                && tar.hp > 5000
-                && (getPartySystem().partyMembers.includes(tar.target));
-        });
-        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y + 5); });
-        useSkill(this.getSkills().charge);
-        if (!character.s.mluck)
-            sendBuffRequest(getInventorySystem().merchantName, "mluck");
-    };
-    ZettWarrior.prototype.tauntTargetedPartyMember = function (f_condition) {
-        if (!is_on_cooldown("taunt")) {
-            for (var id in parent.entities) {
-                var current = parent.entities[id];
-                if (f_condition(current)) {
-                    useSkill(this.getSkills().taunt, current);
-                    break;
-                }
-            }
-        }
-    };
-    return ZettWarrior;
-}(CharacterFunction));
-
-
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
 
 
@@ -1496,7 +1430,8 @@ var CombatSystem = /** @class */ (function () {
         var shouldFollowLeaderAttack = this.shouldFollowLeaderAttack();
         // 0 - Pick Party Leader Target
         if (shouldFollowLeaderAttack) {
-            if (!parent.entities[getPartySystem().partyLeader]) {
+            var partyLeaderTarget = parent.entities[getPartySystem().partyLeader];
+            if (!partyLeaderTarget || (partyLeaderTarget && distance(character, partyLeaderTarget) > 200)) {
                 sendComingRequest(getPartySystem().partyLeader);
             }
             return { target: getPartySystem().getPartyLeaderTarget(), attackType: 0 };
@@ -1689,6 +1624,73 @@ var CombatSystem = /** @class */ (function () {
     };
     return CombatSystem;
 }());
+
+
+;// CONCATENATED MODULE: ./src/characters/zett-warrior.ts
+var zett_warrior_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+
+
+var ZettWarrior = /** @class */ (function (_super) {
+    zett_warrior_extends(ZettWarrior, _super);
+    function ZettWarrior() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    ZettWarrior.prototype.getName = function () {
+        return "Zett";
+    };
+    ZettWarrior.prototype.setup = function () {
+        _super.prototype.setup.call(this);
+        var partyMembers = getPartySystem().partyMembers;
+        for (var i = 0; i < partyMembers.length; i++) {
+            if (partyMembers[i] === character.name)
+                continue;
+            start_character(partyMembers[i], "webpack");
+        }
+        setTimeout(function () { return zUi(); }, 30000);
+    };
+    ZettWarrior.prototype.tick = function () {
+        // Party Logic
+        this.tauntTargetedPartyMember(function (tar) {
+            return tar.type === "monster"
+                && tar.target != character.name
+                && getCombatSystem().combatDifficulty(tar) > CombatDifficulty.MEDIUM
+                && (getPartySystem().partyMembers.includes(tar.target));
+        });
+        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y + 5); });
+        useSkill(this.getSkills().charge);
+        if (!character.s.mluck)
+            sendBuffRequest(getInventorySystem().merchantName, "mluck");
+    };
+    ZettWarrior.prototype.tauntTargetedPartyMember = function (f_condition) {
+        if (!is_on_cooldown("taunt")) {
+            for (var id in parent.entities) {
+                var current = parent.entities[id];
+                if (f_condition(current)) {
+                    useSkill(this.getSkills().taunt, current);
+                    break;
+                }
+            }
+        }
+    };
+    return ZettWarrior;
+}(CharacterFunction));
 
 
 ;// CONCATENATED MODULE: ./src/systems/combat/meleeCombat.ts

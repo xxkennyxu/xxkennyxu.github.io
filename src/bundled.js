@@ -1531,6 +1531,8 @@ var CombatSystem = /** @class */ (function () {
             var cAtkPerSecond = 1 / character.frequency;
             return Math.floor((numAttacks * cAtkPerSecond) / mAtkPerSecond);
         };
+        // TODO: incorporate evasion 
+        // TODO; incorporate pierce
         // Attack count TO KILL calculation
         var acutalCharDmg = this.calculateDamage(character, monster);
         var numAttacksToKillMonster = Math.ceil(monster.hp / acutalCharDmg);
@@ -2263,10 +2265,10 @@ new SoloLocation("bat", 5, "mvampire"), new LoggingSystem(), new PartySystem("Ze
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation("bat", 5), 
 // new FollowPartyLocation(),
-new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
 // new FollowPartyLocation(),
-new SoloLocation("bat", 5), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+new SoloLocation("bat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system

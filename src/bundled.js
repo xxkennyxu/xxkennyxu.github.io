@@ -1532,7 +1532,10 @@ var CombatSystem = /** @class */ (function () {
             return Math.floor((numAttacks * cAtkPerSecond) / mAtkPerSecond);
         };
         // TODO: incorporate evasion 
-        // TODO; incorporate pierce
+        // TODO; incorporate pierce // rpiercing // apiercing
+        // TODO; range
+        // reflection
+        // life steal
         // Attack count TO KILL calculation
         var acutalCharDmg = this.calculateDamage(character, monster);
         var numAttacksToKillMonster = Math.ceil(monster.hp / acutalCharDmg);
@@ -1783,34 +1786,17 @@ var SoloLocation = /** @class */ (function (_super) {
         parent.currentLocation = "?";
         return _this;
     }
-    SoloLocation.prototype.handleGrinch = function (worldBoss) {
-        if (!worldBoss.target)
-            return;
-        var kane = parent.entities["Kane"];
-        if (kane) {
-            if (distance(character, kane) > 100) {
-                this.smartMove(find_npc("citizen0"));
-            }
-        }
-        else {
-            if (secSince(this.lastDestinationChangeAt) < 60)
-                return;
-            this.smartMove(parent.S["grinch"], "grinch");
-            this.lastDestinationChangeAt = new Date();
-            this.atBoss = true;
-        }
-    };
     // TODO: quests
     SoloLocation.prototype.tick = function () {
         for (var boss in worldBossCheck) {
             var worldBossName = worldBossCheck[boss];
             var worldBoss = isWorldBossLive(worldBossName);
             if (worldBoss) {
+                var destinationChangeTimer = 120;
                 if (worldBossName == "grinch") {
-                    this.handleGrinch(worldBoss);
-                    return;
+                    destinationChangeTimer = 30;
                 }
-                if (secSince(this.lastDestinationChangeAt) < 60)
+                if (secSince(this.lastDestinationChangeAt) < destinationChangeTimer)
                     continue;
                 this.smartMove(parent.S[worldBossName], worldBossName);
                 this.lastDestinationChangeAt = new Date();
@@ -2223,7 +2209,6 @@ var KiteCombat = /** @class */ (function (_super) {
             this.attack(target);
             return;
         }
-        this.attack(target);
         var targetDistance = distance(character, target);
         if (targetDistance < 50 // i'm too close
             // monster is targeting me and attack is on cooldown
@@ -2233,6 +2218,7 @@ var KiteCombat = /** @class */ (function (_super) {
             // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
             character.x - (target.x - character.x) / 4, character.y - (target.y - character.y) / 4);
         }
+        this.attack(target);
     };
     return KiteCombat;
 }(CombatSystem));

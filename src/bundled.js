@@ -118,6 +118,15 @@ function fixAddLog() {
     };
     parent.addLogFixed = true;
 }
+var loggedDebug = false;
+function debugLog(message, ms) {
+    if (ms === void 0) { ms = 5000; }
+    if (!loggedDebug) {
+        game_log(message);
+        loggedDebug = true;
+        setInterval(function () { return loggedDebug = false; }, ms);
+    }
+}
 // export function addButtonToUI(buttonText: string, func: Function) {
 // 	const button = `div class="gamebutton promode" onclick="${func.name}()">MY_LABEL</div>`;
 // }
@@ -612,7 +621,7 @@ function movingToData(name, data) {
         game_log("Target [" + name + "] is moving... retrying");
         return;
     }
-    else if (smart.moving) {
+    else if (smart.moving && smart.map === data.map) {
         // i'm moving and is the new coordinate I'm moving to "valid"?
         // i.e. 50x50 within the old destination?
         var destinationX = data.x;
@@ -744,7 +753,7 @@ function bringPotionReply(name, data) {
         send_item(name, locate_item(data.pot), data.pot_qty);
         return;
     }
-    if (smart.moving) { // in case multiple people request at the same time
+    if (smart.moving && smart.map === data.map) {
         var destinationX = data.x;
         var destinationY = data.y;
         var currDestinationX = smart.x;
@@ -958,6 +967,10 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             new UpgradeItem("intearring", 3, UpgradeType.COMPOUND),
             new UpgradeItem("dexearring", 3, UpgradeType.COMPOUND),
             new UpgradeItem("vitearring", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("dexamulet", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("stramulet", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("vitamulet", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("intamulet", 3, UpgradeType.COMPOUND),
         ];
         _this.VEND_LIST = [
         // { level: 3, name: "ringsj" },
@@ -987,15 +1000,15 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         getLoggingSystem().addLogMessage("&#128184;" + character.gold, C_MESSAGE_TYPE_GOLD);
     };
     ZetchantMerchant.prototype.tick = function () {
-        if (character.map === "mansion") {
-            var lostearringidx_1 = getInventorySystem().findItem({ name: "lostearring" });
-            if (lostearringidx_1 != -1) {
-                utils_getLocationSystem().smartMove({ "x": "0", "y": "-283", "map": "mansion" }).then(function () {
-                    exchange(lostearringidx_1);
-                });
-                return;
-            }
-        }
+        // if (character.map === "mansion") {
+        // 	const lostearringidx = getInventorySystem().findItem({name: "lostearring"});
+        // 	if (lostearringidx != -1) {
+        // 		getLocationSystem().smartMove({ "x": "0", "y": "-283", "map": "mansion"}).then(() => {
+        // 			exchange(lostearringidx);
+        // 		});
+        // 		return;				
+        // 	}
+        // }
         if (this.UPGRADE_QUEUE.length === 0) {
             if (!isStandOpen()) {
                 this.openStand();
@@ -1083,7 +1096,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
                 this.UPGRADE_QUEUE.push(this.UPGRADE_LIST[i]);
             }
         }
-        if (this.UPGRADE_QUEUE.length) {
+        if (this.UPGRADE_QUEUE.length && getInventorySystem().inventorySize() < 40) {
             this.getItemsFromBank(this.UPGRADE_QUEUE);
         }
     };
@@ -1195,6 +1208,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     };
     ZetchantMerchant.prototype.registerStandItems = function (items, price) {
         var open_stand_slots = this.getStandSlots();
+        this.hasRegisteredItems = true;
         if (!open_stand_slots || open_stand_slots.length === 0)
             return;
         var stand_idx = 0;
@@ -1207,7 +1221,6 @@ var ZetchantMerchant = /** @class */ (function (_super) {
                 log("Listing " + item.name + " for " + list_price + " gold");
             }
         }
-        this.hasRegisteredItems = true;
     };
     ZetchantMerchant.prototype.bankItems = function (upgradeItems, vendItems) {
         return getInventorySystem().storage(0, function (item) {
@@ -1421,8 +1434,9 @@ var ZettWarrior = /** @class */ (function (_super) {
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
 
 
+
 var C_IGNORE_MONSTER = ["Target Automatron"];
-var C_BOSS_MONSTER = ["Dracul", "Phoenix"];
+var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr."];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
 var C_COMBAT_BOSS_HP_THRESHOLD = 10000;
 var C_PARTY_ATTACK_DISTANCE_THRESHOLD = 100;
@@ -1482,12 +1496,15 @@ var CombatSystem = /** @class */ (function () {
         var shouldFollowLeaderAttack = this.shouldFollowLeaderAttack();
         // 0 - Pick Party Leader Target
         if (shouldFollowLeaderAttack) {
+            if (!parent.entities[getPartySystem().partyLeader]) {
+                sendComingRequest(getPartySystem().partyLeader);
+            }
             return { target: getPartySystem().getPartyLeaderTarget(), attackType: 0 };
         }
         // -1 only keep target if its targeting me
         var targetResult = { target: null, attackType: null };
         var target = this.getTargetedMonster();
-        if (target && target.target != character.name)
+        if (target && target.target != character.name || (target && distance(character, target) > 200))
             target = null;
         if (!target) {
             // 1 - Pick world boss over regular mob
@@ -1561,16 +1578,11 @@ var CombatSystem = /** @class */ (function () {
             var isTargetedByParty = false;
             // check if target is free; exclude if not
             getPartySystem().combatPartyMembers.forEach(function (member) {
-                if (!parent.entities[member])
-                    return;
-                if (parent.entities[member].target === monster.id) {
+                if (parent.entities[member] && parent.entities[member].target === monster.id) {
                     isTargetedByParty = true;
                 }
             });
             var targetTooDifficult = _this.combatDifficulty(monster) > combatDifficultyThreshold;
-            if (targetTooDifficult) {
-                game_log(monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult " + _this.combatDifficulty(monster));
-            }
             return isTargetedByParty || targetTooDifficult;
         });
     };
@@ -1590,16 +1602,18 @@ var CombatSystem = /** @class */ (function () {
         var numAttacksToKillMonster = Math.ceil(monster.hp / acutalCharDmg);
         var damageSuffered = numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) * this.calculateDamage(monster, character);
         var percentHpRemaining = (character.max_hp - damageSuffered) / character.max_hp;
-        if (numAttacksToKillMonster <= 5 && percentHpRemaining > .8) {
+        if (percentHpRemaining > .8) {
             return CombatDifficulty.EASY;
         }
         // Medium: Can kill monsters within 10 attacks && lose up to 50% HP
-        else if (numAttacksToKillMonster <= 10 && percentHpRemaining > .5) {
+        else if (percentHpRemaining > .5) {
             return CombatDifficulty.MEDIUM;
         }
-        else if (numAttacksToKillMonster <= 20 && percentHpRemaining > .3) {
+        else if (percentHpRemaining > .3) {
+            debugLog("HARD: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ".\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n");
             return CombatDifficulty.HARD;
         }
+        debugLog("DEATH: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult.\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n");
         return CombatDifficulty.DEATH;
     };
     CombatSystem.prototype.shouldFollowLeaderAttack = function () {
@@ -1607,16 +1621,17 @@ var CombatSystem = /** @class */ (function () {
             return false;
         if (getHpPercent() < .5)
             return true;
+        var shouldFollowLeaderAttack = true;
         for (var id in parent.entities) {
             var current = parent.entities[id];
             if (current.type != "monster")
                 continue;
             if (distance(character, current) > C_PARTY_ATTACK_DISTANCE_THRESHOLD)
                 continue;
-            if (this.combatDifficulty(current) > CombatDifficulty.MEDIUM)
-                return true;
+            if (this.combatDifficulty(current) <= CombatDifficulty.MEDIUM)
+                shouldFollowLeaderAttack = false;
         }
-        return false;
+        return shouldFollowLeaderAttack;
     };
     CombatSystem.prototype.getTargetedMonster = function () {
         if (parent.ctarget && !parent.ctarget.dead && parent.ctarget.type === "monster")
@@ -1898,7 +1913,11 @@ var PartySystem = /** @class */ (function () {
     };
     PartySystem.prototype.assembleCombatMembers = function () {
         this.combatPartyMembers.forEach(function (name) {
-            sendComeToMeCommand(name, null, false);
+            if (character.name != name) {
+                if (!parent.entities[name] || distance(character, parent.entities[name]) > 200) {
+                    sendComeToMeCommand(name, null, false);
+                }
+            }
         });
     };
     return PartySystem;
@@ -2201,6 +2220,7 @@ var KiteCombat = /** @class */ (function (_super) {
             this.attack(target);
             return;
         }
+        this.attack(target);
         var targetDistance = distance(character, target);
         if (targetDistance < 50 // i'm too close
             // monster is targeting me and attack is on cooldown
@@ -2209,9 +2229,6 @@ var KiteCombat = /** @class */ (function (_super) {
             // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
             // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
             character.x - (target.x - character.x) / 4, character.y - (target.y - character.y) / 4);
-        }
-        else {
-            this.attack(target);
         }
     };
     return KiteCombat;

@@ -118,6 +118,9 @@ function fixAddLog() {
     };
     parent.addLogFixed = true;
 }
+function addButtonToUI(buttonText, func) {
+    var button = "div class=\"gamebutton promode\" onclick=\"" + func.name + "()\">MY_LABEL</div>";
+}
 /**
  * Snippet executor runs in an iFrame. In order for the iFrame to get access to these functions, they need
  * to be added to the IFRAME'S <head>.
@@ -1417,6 +1420,7 @@ var ZettWarrior = /** @class */ (function (_super) {
 
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
 
+
 var C_IGNORE_MONSTER = ["Target Automatron"];
 var C_BOSS_MONSTER = ["Dracul", "Phoenix"];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
@@ -1424,6 +1428,14 @@ var C_ATTACK_THRESHOLD = 400;
 var C_COMBAT_HP_THRESHOLD = 6000;
 var C_COMBAT_BOSS_HP_THRESHOLD = 10000;
 var C_PARTY_ATTACK_DISTANCE_THRESHOLD = 100;
+var C_LOG_ICON = "&#128924;"; // &#127919;
+var CombatDifficulty;
+(function (CombatDifficulty) {
+    CombatDifficulty[CombatDifficulty["EASY"] = 1] = "EASY";
+    CombatDifficulty[CombatDifficulty["MEDIUM"] = 2] = "MEDIUM";
+    CombatDifficulty[CombatDifficulty["HARD"] = 3] = "HARD";
+    CombatDifficulty[CombatDifficulty["DEATH"] = 4] = "DEATH";
+})(CombatDifficulty || (CombatDifficulty = {}));
 var CombatSystem = /** @class */ (function () {
     function CombatSystem(stuckThreshold, stuck, preAttackFunc, postAttackFunc) {
         if (stuckThreshold === void 0) { stuckThreshold = 10; }
@@ -1467,33 +1479,124 @@ var CombatSystem = /** @class */ (function () {
      *  3. Find bosses
      *  4. Find the closest monster [non-boss/non-ignored] (repeat this in case of respawns)
      */
-    CombatSystem.prototype.getTarget = function (ignoreBoss) {
-        var _this = this;
-        if (ignoreBoss === void 0) { ignoreBoss = false; }
+    CombatSystem.prototype.getTarget = function () {
         var shouldFollowLeaderAttack = this.shouldFollowLeaderAttack();
+        // 0 - Pick Party Leader Target
         if (shouldFollowLeaderAttack) {
-            return getPartySystem().getPartyLeaderTarget();
+            return { target: getPartySystem().getPartyLeaderTarget(), attackType: 0 };
         }
-        var target = this.getTargetedMonster();
         // only keep target if its targeting me
+        var targetResult = { target: null, attackType: null };
+        var target = this.getTargetedMonster();
         if (target && target.target != character.name)
             target = null;
-        // Pick world boss over regular mob
-        var entities = getEntities(function (entity) { return _this.isWorldBoss(entity); });
-        if (entities.length)
-            return entities[0];
-        // Kill monsters targeting me
-        entities = this.findNonBossMonstersTargeting();
-        if (entities.length)
-            return entities[0];
-        // Pick boss monster
-        if (!ignoreBoss) {
-            // see if there's a boss target
-            entities = getEntities(function (entity) { return _this.isBoss(entity); });
-            if (entities.length)
-                return entities[0];
+        if (!target) {
+            // 1 - Pick world boss over regular mob
+            var worldBossTarget = this.getWorldBossTarget();
+            // 2 - Kill monsters targeting me
+            var monsterTargetingMe = this.findNonBossMonsterTargeting();
+            // 3 - Pick boss monster
+            var bossTarget = this.getBossTarget();
+            // 4 - Pick a free target if the difficulty is below MEDIUM combat difficulty
+            var freeBeatableTarget = this.getFreeTarget(CombatDifficulty.MEDIUM);
+            if (worldBossTarget) {
+                targetResult.target = worldBossTarget;
+                targetResult.attackType = 1;
+            }
+            else if (monsterTargetingMe) {
+                targetResult.target = monsterTargetingMe;
+                targetResult.attackType = 2;
+            }
+            else if (bossTarget) {
+                targetResult.target = bossTarget;
+                targetResult.attackType = 3;
+            }
+            else if (freeBeatableTarget) {
+                targetResult.target = freeBeatableTarget;
+                targetResult.attackType = 4;
+            }
         }
-        return target ? target : this.getNearestMonster();
+        // 5 - Find nearest monster
+        if (!targetResult.target) {
+            return { target: this.getNearestMonster(), attackType: 5 };
+        }
+        return targetResult;
+    };
+    CombatSystem.prototype.getWorldBossTarget = function () {
+        var _this = this;
+        var entities = getEntities(function (entity) { return _this.isWorldBoss(entity); });
+        return entities.length ? entities[0] : null;
+    };
+    CombatSystem.prototype.getBossTarget = function () {
+        var _this = this;
+        var bossTarget = null;
+        var entities = getEntities(function (entity) { return _this.isBoss(entity); });
+        if (!entities.length)
+            return bossTarget;
+        bossTarget = entities[0];
+        if (bossTarget.max_hp > C_COMBAT_BOSS_HP_THRESHOLD) {
+            var combatPartyMemberCount = 0;
+            var combatPartyMembers = getPartySystem().combatPartyMembers;
+            for (var i in combatPartyMembers) {
+                var party_member = combatPartyMembers[i];
+                var player = get_player(party_member);
+                if (player && player.visible && distance(character, player) < 200) {
+                    combatPartyMemberCount++;
+                }
+            }
+            if (combatPartyMemberCount != 3) {
+                getPartySystem().assembleCombatMembers();
+                bossTarget = null;
+            }
+        }
+        return bossTarget;
+    };
+    CombatSystem.prototype.getFreeTarget = function (combatDifficultyThreshold) {
+        var _this = this;
+        return this.getNearestMonster(function (monster) {
+            var isTargetedByParty = false;
+            // check if target is free; exclude if not
+            getPartySystem().combatPartyMembers.forEach(function (member) {
+                if (!parent.entities[member])
+                    return;
+                if (parent.entities[member].target === monster.id) {
+                    isTargetedByParty = true;
+                }
+            });
+            var targetTooDifficult = _this.combatDifficulty(monster) > combatDifficultyThreshold;
+            if (targetTooDifficult) {
+                game_log(monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult " + _this.combatDifficulty(monster));
+            }
+            return isTargetedByParty || targetTooDifficult;
+        });
+    };
+    CombatSystem.prototype.calculateDamage = function (attacker, defender) {
+        return attacker.attack * (1 - (defender.armor / 100) * .1); // every 100 armor is about 10% +/- diminishing
+    };
+    CombatSystem.prototype.combatDifficulty = function (monster) {
+        // Calculate number of attacks per second and find out how many attacks a monster can do in the time
+        // my character can
+        var numMonsterAttackInPlayerAttacks = function (numAttacks) {
+            var mAtkPerSecond = 1 / monster.frequency;
+            var cAtkPerSecond = 1 / character.frequency;
+            return Math.floor((numAttacks * cAtkPerSecond) / mAtkPerSecond);
+        };
+        // Attack count TO KILL calculation
+        var acutalCharDmg = this.calculateDamage(character, monster);
+        var numAttacksToKillMonster = Math.ceil(monster.hp / acutalCharDmg);
+        var damageSuffered = numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) * this.calculateDamage(monster, character);
+        var percentHpRemaining = (character.max_hp - damageSuffered) / character.max_hp;
+        if (numAttacksToKillMonster <= 5 && percentHpRemaining > .8) {
+            return CombatDifficulty.EASY;
+        }
+        // Medium: Can kill monsters within 10 attacks && lose up to 50% HP
+        else if (numAttacksToKillMonster <= 10 && percentHpRemaining > .5) {
+            return CombatDifficulty.MEDIUM;
+        }
+        else if (numAttacksToKillMonster <= 20 && percentHpRemaining > .3) {
+            return CombatDifficulty.HARD;
+        }
+        return CombatDifficulty.DEATH;
     };
     CombatSystem.prototype.shouldFollowLeaderAttack = function () {
         if (character.name === getPartySystem().partyLeader)
@@ -1518,7 +1621,8 @@ var CombatSystem = /** @class */ (function () {
             return parent.ctarget;
         return null;
     };
-    CombatSystem.prototype.getNearestMonster = function () {
+    CombatSystem.prototype.getNearestMonster = function (excludeCondition) {
+        if (excludeCondition === void 0) { excludeCondition = function () { return false; }; }
         var target = null;
         var minDistance = 999999;
         for (var id in parent.entities) {
@@ -1533,6 +1637,8 @@ var CombatSystem = /** @class */ (function () {
                 continue;
             if (this.isIgnoredMonster(current))
                 continue;
+            if (excludeCondition(current))
+                continue;
             var currentDistance = distance(character, current);
             if (currentDistance < minDistance) {
                 minDistance = currentDistance;
@@ -1541,12 +1647,13 @@ var CombatSystem = /** @class */ (function () {
         }
         return target;
     };
-    CombatSystem.prototype.findNonBossMonstersTargeting = function (target) {
+    CombatSystem.prototype.findNonBossMonsterTargeting = function (target) {
         var _this = this;
         if (target === void 0) { target = character; }
-        return getEntities(function (current) {
+        var entities = getEntities(function (current) {
             return current.type === "monster" && !_this.isBoss(current) && current.target === target.name;
         });
+        return entities.length ? entities[0] : null;
     };
     CombatSystem.prototype.isIgnoredMonster = function (target) {
         return target && C_IGNORE_MONSTER.includes(target.name);
@@ -1558,25 +1665,12 @@ var CombatSystem = /** @class */ (function () {
         return target && C_WORLD_BOSS_MONSTER.includes(target.name);
     };
     CombatSystem.prototype.findTarget = function () {
-        var target = this.getTarget();
-        if (target) {
-            if (this.isBoss(target) && target.max_hp > C_COMBAT_BOSS_HP_THRESHOLD) {
-                var combatPartyMemberCount = 0;
-                var combatPartyMembers = getPartySystem().combatPartyMembers;
-                for (var i in combatPartyMembers) {
-                    var party_member = combatPartyMembers[i];
-                    var player = get_player(party_member);
-                    if (player && player.visible && distance(character, player) < 200) {
-                        combatPartyMemberCount++;
-                    }
-                }
-                if (combatPartyMemberCount != 3) {
-                    getPartySystem().assembleCombatMembers();
-                    return this.getTarget(true);
-                }
-            }
+        var targetTuple = this.getTarget();
+        if (!targetTuple.target) {
+            return null;
         }
-        return target;
+        getLoggingSystem().addLogMessage("" + C_LOG_ICON + targetTuple.attackType + " " + trimString(targetTuple.target.name), C_MESSAGE_TYPE_TARGET);
+        return targetTuple.target;
     };
     return CombatSystem;
 }());
@@ -1599,9 +1693,6 @@ var meleeCombat_extends = (undefined && undefined.__extends) || (function () {
     };
 })();
 
-
-
-var C_LOG_ICON = "&#128924;"; // &#127919;
 var SoloCombat = /** @class */ (function (_super) {
     meleeCombat_extends(SoloCombat, _super);
     function SoloCombat() {
@@ -1612,7 +1703,6 @@ var SoloCombat = /** @class */ (function (_super) {
         if (!target)
             return;
         change_target(target);
-        getLoggingSystem().addLogMessage(C_LOG_ICON + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
         this.attack(target);
     };
     return SoloCombat;
@@ -1743,6 +1833,7 @@ var PartySystem = /** @class */ (function () {
         this.partyLeader = partyLeader;
         this.partyMembers = partyMembers;
         this.sentPartyRequest = false;
+        this.combatPartyMembers = [];
         // override event handlers
         window.on_party_request = function (name) {
             if (_this.partyMembers.includes(name))
@@ -1753,16 +1844,16 @@ var PartySystem = /** @class */ (function () {
             if (_this.partyMembers.includes(name))
                 accept_party_invite(name);
         };
-        setTimeout(function () {
-            _this.combatPartyMembers = [];
-            _this.partyMembers.forEach(function (member) {
-                if (member != getInventorySystem().merchantName)
-                    _this.combatPartyMembers.push(member);
-            });
-        }, 1000);
     }
     PartySystem.prototype.tick = function () {
         var _this = this;
+        // inventorySystem is not instantiated during ctor
+        if (!this.combatPartyMembers.length) {
+            this.partyMembers.forEach(function (member) {
+                if (member != getInventorySystem().merchantName)
+                    _this.combatPartyMembers.push(member);
+            });
+        }
         if (character.name === this.partyLeader)
             return;
         if (!parent.party[this.partyLeader] && !this.sentPartyRequest) {
@@ -2096,9 +2187,6 @@ var kiteCombat_extends = (undefined && undefined.__extends) || (function () {
     };
 })();
 
-
-
-var kiteCombat_C_LOG_ICON = "&#128924;"; // &#127919;
 var KiteCombat = /** @class */ (function (_super) {
     kiteCombat_extends(KiteCombat, _super);
     function KiteCombat() {
@@ -2109,7 +2197,6 @@ var KiteCombat = /** @class */ (function (_super) {
         if (!target)
             return;
         change_target(target);
-        getLoggingSystem().addLogMessage(kiteCombat_C_LOG_ICON + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
         if (!this.isBoss(target) && !this.isWorldBoss(target) && target.max_hp < character.attack * 2) {
             this.attack(target);
             return;

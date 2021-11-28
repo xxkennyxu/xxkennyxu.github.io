@@ -118,9 +118,18 @@ function fixAddLog() {
     };
     parent.addLogFixed = true;
 }
+/**
+ * Snippet executor runs in an iFrame. In order for the iFrame to get access to these functions, they need
+ * to be added to the IFRAME'S <head>.
+ * - $('iframe#maincode')[0].contentWindow.document.getElementsByTagName("head")[0];
+ *
+ * The main DOM (parent.document) does not have this <script> in the <head> because everything gets executed in the iFrame
+ * - document. (iframe)
+ * - parent.document (main dom)
+ */
 function addGlobalFunctions() {
     // Hack to make z() work - this puts the function name in, which gets evaluated to be the 
-    //reference of the actual function again and not the function name itself in game
+    // reference of the actual function again and not the function name itself in game
     var code = "let GLOBAL_FUNCTIONS = [";
     GLOBAL_FUNCTIONS.forEach(function (f) {
         code += f.name + ",";
@@ -130,7 +139,6 @@ function addGlobalFunctions() {
         code += f.toString() + "\n";
     });
     var library = document.createElement("script");
-    library.className = "TEST";
     library.type = "text/javascript";
     library.text = code;
     library.onerror = onerror || function () { game_log("load_code: Failed to load"); };
@@ -762,16 +770,15 @@ var InventorySystem = /** @class */ (function () {
         this.hpPotName = hpPotName;
         this.mpPotName = mpPotName;
     }
-    InventorySystem.prototype.restockPotionsAt = function (pot, potQty, useCmRestock) {
-        if (potQty === -1)
-            return;
-        if (locate_item(pot) === -1 || character.items[locate_item(pot)].q < potQty) {
+    InventorySystem.prototype.restockPotionsAt = function (pot, useCmRestock) {
+        var _this = this;
+        if (locate_item(pot) === -1 || character.items[locate_item(pot)].q < this.potQtyThreshold) {
             if (useCmRestock) {
                 sendBringPotionCommand(this.merchantName, pot);
             }
             else {
                 utils_getLocationSystem().smartMove("town").then(function () {
-                    buy(pot, potQty);
+                    buy(pot, _this.potQtyThreshold);
                 });
             }
         }
@@ -2010,8 +2017,8 @@ var UseMerchant = /** @class */ (function (_super) {
         this.hpPotQty = character.items[locate_item(this.hpPotName)].q;
         this.mpPotQty = character.items[locate_item(this.mpPotName)].q;
         this.transferItemsToMerchant();
-        this.restockPotionsAt(this.hpPotName, this.potQtyThreshold, true);
-        this.restockPotionsAt(this.mpPotName, this.potQtyThreshold, true);
+        this.restockPotionsAt(this.hpPotName, true);
+        this.restockPotionsAt(this.mpPotName, true);
     };
     UseMerchant.prototype.transferItemsToMerchant = function () {
         var _this = this;
@@ -2064,8 +2071,8 @@ var IsMerchant = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     IsMerchant.prototype.tick = function () {
-        this.restockPotionsAt(this.hpPotName, this.potQtyThreshold, false);
-        this.restockPotionsAt(this.mpPotName, this.potQtyThreshold, false);
+        this.restockPotionsAt(this.hpPotName, false);
+        this.restockPotionsAt(this.mpPotName, false);
         this.storage();
     };
     return IsMerchant;

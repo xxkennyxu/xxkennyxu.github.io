@@ -1473,7 +1473,6 @@ var CombatSystem = /** @class */ (function () {
         }
         // 5 - Find nearest monster
         if (!targetResult.target) {
-            getPartySystem().assembleCombatMembers();
             return { target: this.getNearestMonster(), attackType: 5 };
         }
         return targetResult;
@@ -2260,7 +2259,7 @@ var characters = {};
 var C_FULL_PARTY_MEMBERS = ["Zett", "Zetchant", "Zettex", "Zetd", "Zeter", "Zetx", "Zetadin"];
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
 // new SoloLocation("bat", "mvampire", 10),
-new SoloLocation("bat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation("bat", 5, "mvampire"), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation("bat", 5), 
 // new FollowPartyLocation(),

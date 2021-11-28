@@ -1424,8 +1424,6 @@ var ZettWarrior = /** @class */ (function (_super) {
 var C_IGNORE_MONSTER = ["Target Automatron"];
 var C_BOSS_MONSTER = ["Dracul", "Phoenix"];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
-var C_ATTACK_THRESHOLD = 400;
-var C_COMBAT_HP_THRESHOLD = 6000;
 var C_COMBAT_BOSS_HP_THRESHOLD = 10000;
 var C_PARTY_ATTACK_DISTANCE_THRESHOLD = 100;
 var C_LOG_ICON = "&#128924;"; // &#127919;
@@ -1472,6 +1470,7 @@ var CombatSystem = /** @class */ (function () {
         }
     };
     /**
+     * TODO: Clean up logging and attack types with enum?
      * Priority:
      *  1. Follow the party leaders target
      *  2. Kill world bosses
@@ -1485,7 +1484,7 @@ var CombatSystem = /** @class */ (function () {
         if (shouldFollowLeaderAttack) {
             return { target: getPartySystem().getPartyLeaderTarget(), attackType: 0 };
         }
-        // only keep target if its targeting me
+        // -1 only keep target if its targeting me
         var targetResult = { target: null, attackType: null };
         var target = this.getTargetedMonster();
         if (target && target.target != character.name)
@@ -1515,6 +1514,10 @@ var CombatSystem = /** @class */ (function () {
                 targetResult.target = freeBeatableTarget;
                 targetResult.attackType = 4;
             }
+        }
+        else {
+            targetResult.target = target;
+            targetResult.attackType = -1;
         }
         // 5 - Find nearest monster
         if (!targetResult.target) {
@@ -1609,9 +1612,7 @@ var CombatSystem = /** @class */ (function () {
                 continue;
             if (distance(character, current) > C_PARTY_ATTACK_DISTANCE_THRESHOLD)
                 continue;
-            if (current.max_hp > C_COMBAT_HP_THRESHOLD)
-                return true;
-            if (current.attack > C_ATTACK_THRESHOLD)
+            if (this.combatDifficulty(current) > CombatDifficulty.MEDIUM)
                 return true;
         }
         return false;
@@ -1628,8 +1629,6 @@ var CombatSystem = /** @class */ (function () {
         for (var id in parent.entities) {
             var current = parent.entities[id];
             if (current.type != "monster" || !current.visible || current.dead)
-                continue;
-            if (current.attack > C_ATTACK_THRESHOLD)
                 continue;
             if (!can_move_to(current))
                 continue;
@@ -1847,7 +1846,7 @@ var PartySystem = /** @class */ (function () {
     }
     PartySystem.prototype.tick = function () {
         var _this = this;
-        // inventorySystem is not instantiated during ctor
+        // TODO: instantiate combatPartyMembers differently... inventorySystem is not instantiated during ctor
         if (!this.combatPartyMembers.length) {
             this.partyMembers.forEach(function (member) {
                 if (member != getInventorySystem().merchantName)

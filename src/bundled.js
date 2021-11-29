@@ -1627,7 +1627,10 @@ var CombatSystem = /** @class */ (function () {
             debugLog("HARD: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ".\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
             return CombatDifficulty.HARD;
         }
-        debugLog("DEATH: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult.\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
+        else if (percentHpRemaining <= 0) {
+            debugLog("DEATH: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult.\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
+            return CombatDifficulty.DEATH;
+        }
         return CombatDifficulty.DEATH;
     };
     CombatSystem.prototype.getTargetedMonster = function () {
@@ -2325,8 +2328,8 @@ var NoOpCombat = /** @class */ (function (_super) {
 ;// CONCATENATED MODULE: ./src/lib/smartMoveLocations.ts
 var BAT1 = {
     map: "cave",
-    x: -90,
-    y: -490
+    x: 20,
+    y: -350
 };
 var BAT_BOSS = {
     map: "cave",

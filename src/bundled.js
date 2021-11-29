@@ -59,7 +59,39 @@ function isQBusy() {
 }
 function isWorldBossLive(bossName) {
     var worldBosses = getWorldBosses();
-    return worldBosses[bossName] && worldBosses[bossName].live ? worldBosses[bossName] : null;
+    if (!worldBosses[bossName])
+        return null;
+    var isAlive = worldBosses[bossName].live;
+    var isSpawningSoon = msConvert(timeTillWorldBoss(bossName), TimeIn.MINUTES) < 2;
+    return (isAlive || isSpawningSoon) ? worldBosses[bossName] : null;
+}
+var TimeIn;
+(function (TimeIn) {
+    TimeIn[TimeIn["MILISECONDS"] = 0] = "MILISECONDS";
+    TimeIn[TimeIn["SECONDS"] = 1] = "SECONDS";
+    TimeIn[TimeIn["MINUTES"] = 2] = "MINUTES";
+    TimeIn[TimeIn["DAYS"] = 3] = "DAYS";
+})(TimeIn || (TimeIn = {}));
+function msConvert(ms, timeIn) {
+    switch (timeIn) {
+        case TimeIn.MILISECONDS: return ms;
+        case TimeIn.SECONDS: return ms / 1000;
+        case TimeIn.MINUTES: return ms / (60 * 1000);
+        case TimeIn.DAYS: return ms / (24 * 60 * 1000);
+        default: {
+            game_log("Don't recgonize " + timeIn);
+            return -1;
+        }
+    }
+}
+function timeTillWorldBoss(bossName) {
+    var worldBosses = getWorldBosses();
+    if (!worldBosses[bossName] || !worldBosses[bossName].spawn)
+        return -1;
+    var bossSpawnTime = new Date(worldBosses[bossName].spawn);
+    var currentTime = new Date();
+    var timeRemaining = bossSpawnTime.getTime() - currentTime.getTime();
+    return timeRemaining;
 }
 function changeServer(server) {
     switch (server) {
@@ -94,7 +126,7 @@ function getWorldBosses() {
     var worldbosses = {};
     for (var bossName in parent.S) {
         var bossDetails = parent.S[bossName];
-        worldbosses[bossName] = new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp, bossDetails.target);
+        worldbosses[bossName] = new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp, bossDetails.target, bossDetails.spawn);
     }
     return worldbosses;
 }
@@ -299,7 +331,7 @@ var FindItemParameters = /** @class */ (function () {
 }
  */
 var WorldBoss = /** @class */ (function () {
-    function WorldBoss(name, x, y, live, map, hp, maxHp, target) {
+    function WorldBoss(name, x, y, live, map, hp, maxHp, target, spawn) {
         this.name = name;
         this.x = x;
         this.y = y;
@@ -308,6 +340,7 @@ var WorldBoss = /** @class */ (function () {
         this.hp = hp;
         this.maxHp = maxHp;
         this.target = target;
+        this.spawn = spawn;
     }
     return WorldBoss;
 }());

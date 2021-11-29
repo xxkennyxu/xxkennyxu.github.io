@@ -2120,7 +2120,7 @@ var SoloLocation = /** @class */ (function (_super) {
             }
         }
         var locChangeSecs = this.locationChangeIntervalMin * 60;
-        getLoggingSystem().addLogMessage("&#9758; " + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
+        getLoggingSystem().addLogMessage("&#9758; " + trimString(nextLocationName) + " " + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
             this.smartMove(nextLocation, nextLocationName);
             this.lastDestinationChangeAt = new Date();

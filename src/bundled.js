@@ -2366,7 +2366,7 @@ characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new Sol
 // new SoloLocation("bat", "mvampire", 10),
 new SoloLocation(BAT_BOSS, 5, "mvampire"), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation(BAT1, 5), 
+characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation(BAT2, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 

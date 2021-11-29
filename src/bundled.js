@@ -1694,11 +1694,13 @@ var CombatSystem = /** @class */ (function (_super) {
     };
     CombatSystem.prototype.getBossTarget = function () {
         var _this = this;
-        var bossTarget = null;
         var entities = getEntities(function (entity) { return _this.isBoss(entity); });
         if (!entities.length)
+            return null;
+        var bossTarget = entities[0];
+        // boss is targeting one of our party members, attack back
+        if (getPartySystem().partyMembers.includes(bossTarget.target))
             return bossTarget;
-        bossTarget = entities[0];
         var combatPartyMemberCount = 0;
         var combatPartyMemberTargetCount = 0;
         var combatPartyMembers = getPartySystem().combatPartyMembers;

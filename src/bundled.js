@@ -2325,7 +2325,7 @@ var NoOpCombat = /** @class */ (function (_super) {
 ;// CONCATENATED MODULE: ./src/lib/smartMoveLocations.ts
 var BAT1 = {
     map: "cave",
-    x: -83,
+    x: -90,
     y: -490
 };
 var BAT_BOSS = {

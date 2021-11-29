@@ -1943,6 +1943,32 @@ var SoloCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
+;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
+var SmartMoveLocation = /** @class */ (function () {
+    function SmartMoveLocation(x, y, map, name) {
+        this.x = x;
+        this.y = y;
+        this.map = map;
+        this.name = name;
+    }
+    SmartMoveLocation.create = function (x, y, map, name) {
+        return new SmartMoveLocation(x, y, map, name);
+    };
+    SmartMoveLocation.createName = function (name) {
+        return new SmartMoveLocation(null, null, null, name);
+    };
+    SmartMoveLocation.prototype.get = function () {
+        if (!this.x && !this.y && !this.map)
+            return this.name;
+        return this;
+    };
+    return SmartMoveLocation;
+}());
+var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
+var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
+var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
+var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
+
 ;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
 var locationSystem_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -2022,7 +2048,11 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
+
 var worldBossCheck = ["snowman"];
+var worldBossSmartMoveLocation = {
+    "snowman": SNOWMAN
+};
 var SoloLocation = /** @class */ (function (_super) {
     soloLocation_extends(SoloLocation, _super);
     function SoloLocation(mobDestination, locationChangeIntervalMin, bossDestination) {
@@ -2066,11 +2096,14 @@ var SoloLocation = /** @class */ (function (_super) {
         for (var boss in worldBossCheck) {
             var worldBossName = worldBossCheck[boss];
             var worldBoss = isWorldBossReady(worldBossName);
-            if (worldBoss) {
-                nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossName;
+            if (worldBoss && worldBossSmartMoveLocation[worldBossName]) {
+                nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
                 nextLocationName = worldBossName;
                 isNextLocationBoss = true;
                 this.forceNextLocation();
+            }
+            else {
+                debugLog("No SmartLocation found for " + worldBossName);
             }
         }
         if (!nextLocation) {
@@ -2392,7 +2425,7 @@ var UseMerchant = /** @class */ (function (_super) {
         var display = C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize;
         getLoggingSystem().addLogMessage("" + C_ICON + display, C_MESSAGE_TYPE_MERCHANT);
         var maybeTarget = get_player(InventorySystem.merchantName);
-        if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 5000)) {
+        if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 10000)) {
             this.useMerchant();
         }
         else if (get_party()[InventorySystem.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
@@ -2443,31 +2476,6 @@ var IsMerchant = /** @class */ (function (_super) {
     return IsMerchant;
 }(InventorySystem));
 
-
-;// CONCATENATED MODULE: ./src/lib/smartMoveLocations.ts
-var SmartMoveLocation = /** @class */ (function () {
-    function SmartMoveLocation(x, y, map, name) {
-        this.x = x;
-        this.y = y;
-        this.map = map;
-        this.name = name;
-    }
-    SmartMoveLocation.create = function (x, y, map, name) {
-        return new SmartMoveLocation(x, y, map, name);
-    };
-    SmartMoveLocation.createName = function (name) {
-        return new SmartMoveLocation(null, null, null, name);
-    };
-    SmartMoveLocation.prototype.get = function () {
-        if (!this.x && !this.y && !this.map)
-            return this.name;
-        return this;
-    };
-    return SmartMoveLocation;
-}());
-var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
-var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
-var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
 
 ;// CONCATENATED MODULE: ./src/start.ts
 

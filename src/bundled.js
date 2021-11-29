@@ -1658,7 +1658,8 @@ var CombatSystem = /** @class */ (function () {
         var minDistance = 999999;
         for (var id in parent.entities) {
             var current = parent.entities[id];
-            if (current.type != "monster" || !current.visible || current.dead)
+            // if(current.type != "monster" || !current.visible || current.dead) continue;
+            if (current.type != "monster" || current.dead)
                 continue;
             if (!can_move_to(current))
                 continue;

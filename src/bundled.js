@@ -1886,6 +1886,14 @@ var SoloLocation = /** @class */ (function (_super) {
     }
     // TODO: quests
     SoloLocation.prototype.tick = function () {
+        var target = get_target();
+        // checking HP here to make sure we're engaged and not short circuiting due to target being dropped
+        if (target && target.hp < target.max_hp && (getCombatSystem().isBoss(target) || getCombatSystem().isWorldBoss(target))) {
+            this.atBoss = true;
+            parent.currentLocation = "?";
+            this.lastDestinationChangeAt = pastDatePlusMins(this.locationChangeIntervalMin + 1);
+            return;
+        }
         for (var boss in worldBossCheck) {
             var worldBossName = worldBossCheck[boss];
             var worldBoss = isWorldBossLive(worldBossName);
@@ -1902,9 +1910,6 @@ var SoloLocation = /** @class */ (function (_super) {
                 return;
             }
         }
-        var target = get_target();
-        if (target && (getCombatSystem().isBoss(target) || getCombatSystem().isWorldBoss(target)))
-            return;
         var nextLocation; // TODO
         if (!this.bossDestination || this.atBoss || parent.currentLocation === "?" || character.map === "bank") {
             nextLocation = this.mobDestination;
@@ -1912,13 +1917,11 @@ var SoloLocation = /** @class */ (function (_super) {
         else {
             nextLocation = this.bossDestination;
         }
-        if (nextLocation === parent.currentLocation)
-            return;
         var locChangeSecs = this.locationChangeIntervalMin * 60;
-        // getLoggingSystem().addLogMessage(`&#9758; ${trimString(nextLocation)}-${timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt)}`, "t_location")
+        getLoggingSystem().addLogMessage("&#9758; " + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
             this.smartMove(nextLocation);
-            this.atBoss = nextLocation === this.bossDestination;
+            this.atBoss = Object.is(nextLocation, this.bossDestination);
             this.lastDestinationChangeAt = new Date();
         }
     };

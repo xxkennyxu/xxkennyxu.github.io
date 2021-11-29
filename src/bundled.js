@@ -2096,14 +2096,13 @@ var SoloLocation = /** @class */ (function (_super) {
         for (var boss in worldBossCheck) {
             var worldBossName = worldBossCheck[boss];
             var worldBoss = isWorldBossReady(worldBossName);
-            if (worldBoss && worldBossSmartMoveLocation[worldBossName]) {
+            if (!worldBossSmartMoveLocation[worldBossName])
+                debugLog("No SmartLocation found for " + worldBossName);
+            if (worldBoss) {
                 nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
                 nextLocationName = worldBossName;
                 isNextLocationBoss = true;
                 this.forceNextLocation();
-            }
-            else {
-                debugLog("No SmartLocation found for " + worldBossName);
             }
         }
         if (!nextLocation) {

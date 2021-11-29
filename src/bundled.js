@@ -795,14 +795,12 @@ var CM_MAP = {
     INVENTORY_PREVIEW: inventoryPreview,
     BUFF_ME: handleBuffRequest,
 };
-var F_CM_LAST_SENT = pastDatePlusMins(60);
 function cms_sendCharacterMessage(name, data, isReply) {
     if (isReply === void 0) { isReply = false; }
-    if (!isReply && secSince(F_CM_LAST_SENT) < C_CM_SEND_THRESHOLD)
+    if (!isReply && !canCall("sendCharacterMessage", "cm", 1000 * C_CM_SEND_THRESHOLD))
         return;
     log("--> " + name + ": " + data.msg_type);
     send_cm(name, data);
-    F_CM_LAST_SENT = new Date();
 }
 /**
 2 types of Character Message (CM) flows:

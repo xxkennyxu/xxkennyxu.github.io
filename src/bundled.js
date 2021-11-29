@@ -57,7 +57,7 @@ function isStandOpen() {
 function isQBusy() {
     return Object.keys(character.q).length != 0;
 }
-function isWorldBossLive(bossName) {
+function isWorldBossReady(bossName) {
     var worldBosses = getWorldBosses();
     if (!worldBosses[bossName])
         return null;
@@ -83,6 +83,9 @@ function msConvert(ms, timeIn) {
             return -1;
         }
     }
+}
+function sinceConvert(date, timeIn) {
+    return msConvert(mssince(date), timeIn);
 }
 function timeTillWorldBoss(bossName) {
     var worldBosses = getWorldBosses();
@@ -150,6 +153,7 @@ function fixAddLog() {
     };
     parent.addLogFixed = true;
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function logException(name, exception) {
     debugLog(name + ": " + exception, "exception");
     console.log(name + ": " + exception);
@@ -170,11 +174,14 @@ function debugLog(message, key, ms) {
     }
 }
 var throttleMap = {};
-function throttle(f, ms) {
-    if (!throttleMap[f.name] || mssince(throttleMap[f.name]) > ms) {
-        f();
-        throttleMap[f.name] = new Date();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function canCall(fName, inputString, ms) {
+    var throttleKey = inputString + "_" + fName;
+    if (!throttleMap[throttleKey] || mssince(throttleMap[throttleKey]) > ms) {
+        throttleMap[throttleKey] = new Date();
+        return true;
     }
+    return false;
 }
 // export function addButtonToUI(buttonText: string, func: Function) {
 // 	const button = `div class="gamebutton promode" onclick="${func.name}()">MY_LABEL</div>`;
@@ -345,12 +352,6 @@ var WorldBoss = /** @class */ (function () {
     return WorldBoss;
 }());
 
-var SmartMoveLocation = /** @class */ (function () {
-    function SmartMoveLocation() {
-    }
-    return SmartMoveLocation;
-}());
-
 // TODO: game events
 // http://adventure.land/docs/code/game/events
 // TODO: char events
@@ -476,12 +477,7 @@ var Character = /** @class */ (function () {
     };
     Character.prototype.systemFunc = function () {
         this.systems.forEach(function (system) {
-            try {
-                system.tick();
-            }
-            catch (exception) {
-                logException(system.getName(), exception);
-            }
+            system.tick();
         });
     };
     return Character;
@@ -867,28 +863,100 @@ function bringPotionReply(name, data) {
     });
 }
 
+;// CONCATENATED MODULE: ./src/systems/system.ts
+var System = /** @class */ (function () {
+    function System() {
+    }
+    Object.defineProperty(System.prototype, "previousState", {
+        get: function () {
+            return this._previousState;
+        },
+        set: function (value) {
+            this._previousState = value;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(System.prototype, "previousStateSetDurationMs", {
+        get: function () {
+            return this._previousStateSetDurationMs;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(System.prototype, "currentState", {
+        get: function () {
+            return this._currentState;
+        },
+        set: function (newState) {
+            if (newState === this._currentState)
+                return; // TODO: is this fine? game_log(`State error: setting indetical ${newState}`);
+            this._previousState = this.currentState;
+            this._previousStateSetDurationMs = this._currentStateSetTime ? mssince(this._currentStateSetTime) : 0;
+            this._currentState = newState;
+            this._currentStateSetTime = new Date();
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(System.prototype, "currentStateSetTime", {
+        get: function () {
+            return this._currentStateSetTime;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    return System;
+}());
+
+var Stateless;
+(function (Stateless) {
+})(Stateless || (Stateless = {}));
+
 ;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
+var inventory_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
 
 
 var C_DO_NOT_STORE_ITEM = ["pot", "cscroll", "scroll0", "scroll1", "tracker", "stand", "lostearring"];
-var InventorySystem = /** @class */ (function () {
-    function InventorySystem(merchantName, potQtyThreshold, hpPotName, mpPotName) {
-        if (potQtyThreshold === void 0) { potQtyThreshold = 100; }
-        if (hpPotName === void 0) { hpPotName = "hpot1"; }
-        if (mpPotName === void 0) { mpPotName = "mpot1"; }
-        this.merchantName = merchantName;
-        this.potQtyThreshold = potQtyThreshold;
-        this.hpPotName = hpPotName;
-        this.mpPotName = mpPotName;
+var InventoryState;
+(function (InventoryState) {
+})(InventoryState || (InventoryState = {}));
+var InventorySystem = /** @class */ (function (_super) {
+    inventory_extends(InventorySystem, _super);
+    function InventorySystem() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.potQtyThreshold = 100;
+        _this.hpPotName = "hpot1";
+        _this.mpPotName = "mpot1";
+        return _this;
     }
     InventorySystem.prototype.getName = function () {
         return "InventorySystem";
+    };
+    InventorySystem.prototype.setPotQtyThreshold = function (num) {
+        this.potQtyThreshold = num;
+        return this;
     };
     InventorySystem.prototype.restockPotionsAt = function (pot, useCmRestock) {
         var _this = this;
         if (locate_item(pot) === -1 || character.items[locate_item(pot)].q < this.potQtyThreshold) {
             if (useCmRestock) {
-                sendBringPotionCommand(this.merchantName, pot);
+                sendBringPotionCommand(InventorySystem.merchantName, pot);
             }
             else {
                 utils_getLocationSystem().smartMove("town").then(function () {
@@ -953,11 +1021,28 @@ var InventorySystem = /** @class */ (function () {
             send_item(name, i, character.items[i].q);
         }
     };
+    InventorySystem.merchantName = "Zetchant";
     return InventorySystem;
-}());
+}(System));
 
 
 ;// CONCATENATED MODULE: ./src/systems/debug/logging.ts
+var logging_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
 
 var C_MESSAGE_TYPE_MERCHANT = "t_merchant";
 var C_MESSAGE_TYPE_STALL = "t_stall";
@@ -966,21 +1051,20 @@ var C_MESSAGE_TYPE_COMPOUND = "t_compound";
 var C_MESSAGE_TYPE_UPGRADE = "t_upgrade";
 var C_MESSAGE_TYPE_WALKING = "t_walking";
 var C_MESSAGE_TYPE_TARGET = "t_target";
-var LoggingSystem = /** @class */ (function () {
-    function LoggingSystem(refreshMs) {
-        if (refreshMs === void 0) { refreshMs = 1000; }
-        this.refreshMs = refreshMs;
-        this.lastMessageLoggedAt = new Date();
-        this.messageQueue = {};
+var LoggingSystem = /** @class */ (function (_super) {
+    logging_extends(LoggingSystem, _super);
+    function LoggingSystem() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.messageQueue = {};
+        return _this;
     }
     LoggingSystem.prototype.getName = function () {
         return "LoggingSystem";
     };
     LoggingSystem.prototype.tick = function () {
-        if (mssince(this.lastMessageLoggedAt) < this.refreshMs)
+        if (!canCall("displayLogMessages", this.getName(), 1000))
             return;
         this.displayLogMessages();
-        this.lastMessageLoggedAt = new Date();
     };
     LoggingSystem.prototype.displayLogMessages = function () {
         var display_msg = Math.trunc(getHpPercent() * 100) + "%/" + Math.trunc(getMpPercent() * 100) + "% | Lv" + character.level + " (" + Math.trunc(character.xp / character.max_xp * 100) + "%)<br>";
@@ -1011,7 +1095,7 @@ var LoggingSystem = /** @class */ (function () {
         this.messageQueue[msg_type] = message;
     };
     return LoggingSystem;
-}());
+}(System));
 
 
 ;// CONCATENATED MODULE: ./src/characters/zetchant-merchant.ts
@@ -1478,12 +1562,27 @@ var ZettexRogue = /** @class */ (function (_super) {
 
 
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
+var combatSystem_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
 
 
 var C_IGNORE_MONSTER = ["Target Automatron"];
-var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr."];
+var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr.", "Golden Bat"];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
-var C_PARTY_ATTACK_DISTANCE_THRESHOLD = 100;
 var C_LOG_ICON = "&#128924;"; // &#127919;
 var CombatDifficulty;
 (function (CombatDifficulty) {
@@ -1492,16 +1591,25 @@ var CombatDifficulty;
     CombatDifficulty[CombatDifficulty["HARD"] = 3] = "HARD";
     CombatDifficulty[CombatDifficulty["DEATH"] = 4] = "DEATH";
 })(CombatDifficulty || (CombatDifficulty = {}));
-var CombatSystem = /** @class */ (function () {
-    function CombatSystem(stuckThreshold, stuck, preAttackFunc, postAttackFunc) {
-        if (stuckThreshold === void 0) { stuckThreshold = 10; }
-        if (stuck === void 0) { stuck = 0; }
-        if (preAttackFunc === void 0) { preAttackFunc = function () { }; }
-        if (postAttackFunc === void 0) { postAttackFunc = function () { }; }
-        this.stuckThreshold = stuckThreshold;
-        this.stuck = stuck;
-        this.preAttackFunc = preAttackFunc;
-        this.postAttackFunc = postAttackFunc;
+var CombatState;
+(function (CombatState) {
+    CombatState[CombatState["WORLD_BOSS"] = -99] = "WORLD_BOSS";
+    CombatState[CombatState["BOSS"] = -9] = "BOSS";
+    CombatState[CombatState["NO_ENEMY"] = -1] = "NO_ENEMY";
+    CombatState[CombatState["TARGETING_ME"] = 0] = "TARGETING_ME";
+    CombatState[CombatState["BEATABLE"] = 1] = "BEATABLE";
+    CombatState[CombatState["FOLLOW_PARTY_LEADER"] = 2] = "FOLLOW_PARTY_LEADER";
+    CombatState[CombatState["CLOSEST"] = 99] = "CLOSEST";
+})(CombatState || (CombatState = {}));
+var CombatSystem = /** @class */ (function (_super) {
+    combatSystem_extends(CombatSystem, _super);
+    function CombatSystem() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.stuckThreshold = 10;
+        _this.stuck = 0;
+        _this.preAttackFunc = function () { };
+        _this.postAttackFunc = function () { };
+        return _this;
     }
     CombatSystem.prototype.getName = function () {
         return "CombatSystem";
@@ -1540,52 +1648,46 @@ var CombatSystem = /** @class */ (function () {
      *  4. Find the closest monster [non-boss/non-ignored] (repeat this in case of respawns)
      */
     CombatSystem.prototype.getTarget = function () {
-        // -1 only keep target if its targeting me
-        var targetResult = { target: null, attackType: null };
-        var target = this.getTargetedMonster();
-        if (target && target.target != character.name || (target && distance(character, target) > 200))
-            target = null;
-        if (!target) {
-            // 1 - Pick world boss over regular mob
-            var worldBossTarget = this.getWorldBossTarget();
-            // 2 - Kill monsters targeting me
-            var monsterTargetingMe = this.findNonBossMonsterTargeting();
-            // 3 - Pick boss monster
-            var bossTarget = this.getBossTarget();
-            // 4 - Pick a free target if the difficulty is below MEDIUM combat difficulty
-            var freeBeatableTarget = this.getFreeTarget(CombatDifficulty.MEDIUM);
-            // 5 - find the party leader's target
-            var partyLeaderTarget = getPartySystem().getPartyLeaderTarget();
-            if (worldBossTarget) {
-                targetResult.target = worldBossTarget;
-                targetResult.attackType = 1;
-            }
-            else if (monsterTargetingMe) {
-                targetResult.target = monsterTargetingMe;
-                targetResult.attackType = 2;
-            }
-            else if (bossTarget) {
-                targetResult.target = bossTarget;
-                targetResult.attackType = 3;
-            }
-            else if (freeBeatableTarget) {
-                targetResult.target = freeBeatableTarget;
-                targetResult.attackType = 4;
-            }
-            else if (partyLeaderTarget) {
-                targetResult.target = partyLeaderTarget;
-                targetResult.attackType = 5;
-            }
+        var target;
+        // Kill NON BOSS monsters targeting me
+        var monsterTargetingMe = this.findNonBossMonsterTargeting();
+        // Pick world boss next
+        var worldBossTarget = this.getWorldBossTarget();
+        // Pick boss monster
+        var bossTarget = this.getBossTarget();
+        // Pick a free target if the difficulty is below MEDIUM combat difficulty
+        var freeBeatableTarget = this.getFreeTarget(CombatDifficulty.MEDIUM);
+        // find the party leader's target
+        var partyLeaderTarget = getPartySystem().getPartyLeaderTarget();
+        if (monsterTargetingMe) {
+            target = monsterTargetingMe;
+            this.currentState = CombatState.TARGETING_ME;
+        }
+        else if (worldBossTarget) {
+            target = worldBossTarget;
+            this.currentState = CombatState.WORLD_BOSS;
+        }
+        else if (bossTarget) {
+            target = bossTarget;
+            this.currentState = CombatState.BOSS;
+        }
+        else if (freeBeatableTarget) {
+            target = freeBeatableTarget;
+            this.currentState = CombatState.BEATABLE;
+        }
+        else if (partyLeaderTarget) {
+            target = partyLeaderTarget;
+            this.currentState = CombatState.FOLLOW_PARTY_LEADER;
         }
         else {
-            targetResult.target = target;
-            targetResult.attackType = -1;
+            // 0 - Find nearest monster
+            target = this.getNearestMonster();
+            this.currentState = CombatState.CLOSEST;
         }
-        // 5 - Find nearest monster
-        if (!targetResult.target) {
-            return { target: this.getNearestMonster(), attackType: 0 };
+        if (!target) {
+            this.currentState = CombatState.NO_ENEMY;
         }
-        return targetResult;
+        return target;
     };
     CombatSystem.prototype.getWorldBossTarget = function () {
         var _this = this;
@@ -1600,15 +1702,19 @@ var CombatSystem = /** @class */ (function () {
             return bossTarget;
         bossTarget = entities[0];
         var combatPartyMemberCount = 0;
+        var combatPartyMemberTargetCount = 0;
         var combatPartyMembers = getPartySystem().combatPartyMembers;
         for (var i in combatPartyMembers) {
             var party_member = combatPartyMembers[i];
             var player = get_player(party_member);
-            if (player && player.visible && distance(character, player) < 300) {
+            if (player && distance(character, player) < 300) {
                 combatPartyMemberCount++;
             }
+            if (player && player.target === bossTarget.id) {
+                combatPartyMemberTargetCount++;
+            }
         }
-        if (combatPartyMemberCount != 3) {
+        if (combatPartyMemberCount != 3 && combatPartyMemberTargetCount != 3) {
             getPartySystem().assembleCombatMembers();
             bossTarget = null;
         }
@@ -1714,15 +1820,26 @@ var CombatSystem = /** @class */ (function () {
         return target && C_WORLD_BOSS_MONSTER.includes(target.name);
     };
     CombatSystem.prototype.findTarget = function () {
-        var targetTuple = this.getTarget();
-        if (!targetTuple.target) {
+        var target = this.getTarget();
+        if (!target) {
             return null;
         }
-        getLoggingSystem().addLogMessage("" + C_LOG_ICON + targetTuple.attackType + " " + trimString(targetTuple.target.name), C_MESSAGE_TYPE_TARGET);
-        return targetTuple.target;
+        getLoggingSystem().addLogMessage("" + C_LOG_ICON + this.previousState + "->" + this.currentState + "_" + trimString(sinceConvert(this.currentStateSetTime, TimeIn.SECONDS).toString()) + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
+        return target;
     };
     return CombatSystem;
-}());
+}(System));
+
+var NoOpCombat = /** @class */ (function (_super) {
+    combatSystem_extends(NoOpCombat, _super);
+    function NoOpCombat() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    NoOpCombat.prototype.tick = function () {
+        return;
+    };
+    return NoOpCombat;
+}(CombatSystem));
 
 
 ;// CONCATENATED MODULE: ./src/characters/zett-warrior.ts
@@ -1741,6 +1858,7 @@ var zett_warrior_extends = (undefined && undefined.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+
 
 
 
@@ -1775,7 +1893,7 @@ var ZettWarrior = /** @class */ (function (_super) {
         getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y + 5); });
         useSkill(this.getSkills().charge);
         if (!character.s.mluck)
-            sendBuffRequest(getInventorySystem().merchantName, "mluck");
+            sendBuffRequest(InventorySystem.merchantName, "mluck");
     };
     ZettWarrior.prototype.tauntTargetedPartyMember = function (f_condition) {
         if (!is_on_cooldown("taunt")) {
@@ -1826,10 +1944,31 @@ var SoloCombat = /** @class */ (function (_super) {
 
 
 ;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
+var locationSystem_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 
 
-var LocationSystem = /** @class */ (function () {
+
+var LocationState;
+(function (LocationState) {
+})(LocationState || (LocationState = {}));
+var LocationSystem = /** @class */ (function (_super) {
+    locationSystem_extends(LocationSystem, _super);
     function LocationSystem() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     LocationSystem.prototype.getName = function () {
         return "LocationSystem";
@@ -1850,7 +1989,18 @@ var LocationSystem = /** @class */ (function () {
         };
     };
     return LocationSystem;
-}());
+}(System));
+
+var NoOpLocation = /** @class */ (function (_super) {
+    locationSystem_extends(NoOpLocation, _super);
+    function NoOpLocation() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    NoOpLocation.prototype.tick = function () {
+        return;
+    };
+    return NoOpLocation;
+}(LocationSystem));
 
 
 ;// CONCATENATED MODULE: ./src/systems/location/soloLocation.ts
@@ -1871,7 +2021,8 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 })();
 
 
-var worldBossCheck = ["grinch", "snowman"];
+
+var worldBossCheck = ["snowman"];
 var SoloLocation = /** @class */ (function (_super) {
     soloLocation_extends(SoloLocation, _super);
     function SoloLocation(mobDestination, locationChangeIntervalMin, bossDestination) {
@@ -1879,50 +2030,73 @@ var SoloLocation = /** @class */ (function (_super) {
         _this.mobDestination = mobDestination;
         _this.locationChangeIntervalMin = locationChangeIntervalMin;
         _this.bossDestination = bossDestination;
-        _this.lastDestinationChangeAt = pastDatePlusMins(6);
-        _this.atBoss = true;
+        _this.lastDestinationChangeAt = pastDatePlusMins(locationChangeIntervalMin + 1);
         parent.currentLocation = "?";
         return _this;
     }
-    // TODO: quests
     SoloLocation.prototype.tick = function () {
-        var target = get_target();
         // checking HP here to make sure we're engaged and not short circuiting due to target being dropped
-        if (target && target.hp < target.max_hp && (getCombatSystem().isBoss(target) || getCombatSystem().isWorldBoss(target))) {
-            this.atBoss = true;
-            parent.currentLocation = "?";
-            this.lastDestinationChangeAt = pastDatePlusMins(this.locationChangeIntervalMin + 1);
-            return;
-        }
-        for (var boss in worldBossCheck) {
-            var worldBossName = worldBossCheck[boss];
-            var worldBoss = isWorldBossLive(worldBossName);
-            if (worldBoss) {
-                var destinationChangeTimer = 120;
-                if (worldBossName == "grinch") {
-                    destinationChangeTimer = 30;
-                }
-                if (secSince(this.lastDestinationChangeAt) < destinationChangeTimer)
-                    continue;
-                this.smartMove(parent.S[worldBossName], worldBossName);
-                this.lastDestinationChangeAt = new Date();
-                this.atBoss = true;
-                return;
+        if (getCombatSystem().currentState === CombatState.WORLD_BOSS || getCombatSystem().currentState === CombatState.BOSS) {
+            if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
+                parent.currentLocation = "?";
+                this.forceNextLocation();
             }
         }
-        var nextLocation; // TODO
-        if (!this.bossDestination || this.atBoss || parent.currentLocation === "?" || character.map === "bank") {
-            nextLocation = this.mobDestination;
+        else if (parent.S["grinch"].live) {
+            // TODO: grinch is special, remove after even is over
+            if (secSince(this.lastDestinationChangeAt) > 30) {
+                this.smartMove(parent.S["grinch"], "grinch");
+                this.lastDestinationChangeAt = new Date();
+                parent.currentLocation = "?";
+                this.forceNextLocation();
+            }
         }
         else {
-            nextLocation = this.bossDestination;
+            this.moveToNextLocation();
+        }
+    };
+    SoloLocation.prototype.forceNextLocation = function () {
+        this.lastDestinationChangeAt = pastDatePlusMins(this.locationChangeIntervalMin + 1);
+    };
+    SoloLocation.prototype.moveToNextLocation = function () {
+        var nextLocation;
+        var nextLocationName = "???";
+        var isNextLocationBoss = false;
+        // always goes to bosses in order
+        for (var boss in worldBossCheck) {
+            var worldBossName = worldBossCheck[boss];
+            var worldBoss = isWorldBossReady(worldBossName);
+            if (worldBoss) {
+                nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossName;
+                nextLocationName = worldBossName;
+                isNextLocationBoss = true;
+                this.forceNextLocation();
+            }
+        }
+        if (!nextLocation) {
+            if (!this.bossDestination || parent.currentLocation === "?" || character.map === "bank") {
+                if (typeof this.mobDestination === "string") {
+                    nextLocation = nextLocationName = this.mobDestination;
+                }
+                else {
+                    nextLocation = this.mobDestination.get();
+                    nextLocationName = this.mobDestination.name;
+                }
+            }
+            else {
+                nextLocation = this.bossDestination;
+                nextLocationName = this.bossDestination;
+                isNextLocationBoss = true;
+            }
         }
         var locChangeSecs = this.locationChangeIntervalMin * 60;
         getLoggingSystem().addLogMessage("&#9758; " + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
-            this.smartMove(nextLocation);
-            this.atBoss = Object.is(nextLocation, this.bossDestination);
+            this.smartMove(nextLocation, nextLocationName);
             this.lastDestinationChangeAt = new Date();
+            if (isNextLocationBoss) {
+                parent.currentLocation = "?";
+            }
         }
     };
     return SoloLocation;
@@ -1930,46 +2104,67 @@ var SoloLocation = /** @class */ (function (_super) {
 
 
 ;// CONCATENATED MODULE: ./src/systems/party.ts
+var party_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 
 
-var PartySystem = /** @class */ (function () {
-    function PartySystem(partyLeader, partyMembers) {
-        var _this = this;
-        this.partyLeader = partyLeader;
-        this.partyMembers = partyMembers;
-        this.sentPartyRequest = false;
-        this.combatPartyMembers = [];
+
+
+var PartySystem = /** @class */ (function (_super) {
+    party_extends(PartySystem, _super);
+    function PartySystem() {
+        var _this = _super.call(this) || this;
         // override event handlers
         window.on_party_request = function (name) {
-            if (_this.partyMembers.includes(name))
+            if (getPartySystem().partyMembers.includes(name))
                 accept_party_request(name);
         };
         // override event handlers
         window.on_party_invite = function (name) {
-            if (_this.partyMembers.includes(name))
+            if (getPartySystem().partyMembers.includes(name))
                 accept_party_invite(name);
         };
+        return _this;
     }
+    PartySystem.prototype.setPartyLeader = function (name) {
+        this.partyLeader = name;
+        return this;
+    };
+    PartySystem.prototype.setPartyMembers = function (names) {
+        var _this = this;
+        this.partyMembers = names;
+        this.combatPartyMembers = [];
+        this.partyMembers.forEach(function (member) {
+            if (member != InventorySystem.merchantName)
+                _this.combatPartyMembers.push(member);
+        });
+        return this;
+    };
     PartySystem.prototype.getName = function () {
         return "PartySystem";
     };
     PartySystem.prototype.tick = function () {
-        var _this = this;
-        // TODO: instantiate combatPartyMembers differently... inventorySystem is not instantiated during ctor
-        if (!this.combatPartyMembers.length) {
-            this.partyMembers.forEach(function (member) {
-                if (member != getInventorySystem().merchantName)
-                    _this.combatPartyMembers.push(member);
-            });
-        }
         if (character.name === this.partyLeader)
             return;
-        if (!parent.party[this.partyLeader] && !this.sentPartyRequest) {
-            send_party_request(this.partyLeader);
-            this.sentPartyRequest = true;
-            // avoid spamming requests
-            setTimeout(function () { return _this.sentPartyRequest = false; }, 5000);
+        if (!parent.party[this.partyLeader] && canCall("sendPartyRequest", this.getName(), 5000)) {
+            this.sendPartyRequest();
         }
+    };
+    PartySystem.prototype.sendPartyRequest = function () {
+        send_party_request(this.partyLeader);
     };
     PartySystem.prototype.getPartyLeaderTarget = function () {
         for (var id in parent.entities) {
@@ -2014,7 +2209,7 @@ var PartySystem = /** @class */ (function () {
         });
     };
     return PartySystem;
-}());
+}(System));
 
 
 ;// CONCATENATED MODULE: ./src/characters/zeter-ranger.ts
@@ -2113,35 +2308,6 @@ var ZetadinPaladin = /** @class */ (function (_super) {
 }(CharacterFunction));
 
 
-;// CONCATENATED MODULE: ./src/systems/location/NoOpLocation.ts
-var NoOpLocation_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-var NoOpLocation = /** @class */ (function (_super) {
-    NoOpLocation_extends(NoOpLocation, _super);
-    function NoOpLocation() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    NoOpLocation.prototype.tick = function () {
-        return;
-    };
-    return NoOpLocation;
-}(LocationSystem));
-
-
 ;// CONCATENATED MODULE: ./src/systems/location/followPartyLocation.ts
 var followPartyLocation_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -2212,9 +2378,7 @@ var C_ICON = "&#128093;"; // &#128176;
 var UseMerchant = /** @class */ (function (_super) {
     useMerchant_extends(UseMerchant, _super);
     function UseMerchant() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.usedMerchant = false;
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     UseMerchant.prototype.tick = function () {
         this.hpPotQty = character.items[locate_item(this.hpPotName)].q;
@@ -2224,28 +2388,26 @@ var UseMerchant = /** @class */ (function (_super) {
         this.restockPotionsAt(this.mpPotName, true);
     };
     UseMerchant.prototype.transferItemsToMerchant = function () {
-        var _this = this;
         var inventorySize = this.inventorySize();
         var display = C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize;
         getLoggingSystem().addLogMessage("" + C_ICON + display, C_MESSAGE_TYPE_MERCHANT);
-        var maybeTarget = get_player(this.merchantName);
-        if (!this.usedMerchant && maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE) {
-            this.sendItems(this.merchantName);
-            send_gold(this.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
-            var hpPotRequestCount = 20 * this.potQtyThreshold - this.hpPotQty;
-            var mpPotRequestCount = 20 * this.potQtyThreshold - this.mpPotQty;
-            if (hpPotRequestCount > 0)
-                sendBringPotionCommand(this.merchantName, this.hpPotName, false, hpPotRequestCount);
-            if (mpPotRequestCount > 0)
-                sendBringPotionCommand(this.merchantName, this.mpPotName, false, mpPotRequestCount);
-            this.usedMerchant = true;
-            setTimeout(function () {
-                _this.usedMerchant = false;
-            }, 5000);
+        var maybeTarget = get_player(InventorySystem.merchantName);
+        if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 5000)) {
+            this.useMerchant();
         }
-        else if (get_party()[this.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
-            sendComeToMeCommand(this.merchantName);
+        else if (get_party()[InventorySystem.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
+            sendComeToMeCommand(InventorySystem.merchantName);
         }
+    };
+    UseMerchant.prototype.useMerchant = function () {
+        this.sendItems(InventorySystem.merchantName);
+        send_gold(InventorySystem.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
+        var hpPotRequestCount = 20 * this.potQtyThreshold - this.hpPotQty;
+        var mpPotRequestCount = 20 * this.potQtyThreshold - this.mpPotQty;
+        if (hpPotRequestCount > 0)
+            sendBringPotionCommand(InventorySystem.merchantName, this.hpPotName, false, hpPotRequestCount);
+        if (mpPotRequestCount > 0)
+            sendBringPotionCommand(InventorySystem.merchantName, this.mpPotName, false, mpPotRequestCount);
     };
     return UseMerchant;
 }(InventorySystem));
@@ -2282,51 +2444,30 @@ var IsMerchant = /** @class */ (function (_super) {
 }(InventorySystem));
 
 
-;// CONCATENATED MODULE: ./src/systems/combat/noOpCombat.ts
-var noOpCombat_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-var NoOpCombat = /** @class */ (function (_super) {
-    noOpCombat_extends(NoOpCombat, _super);
-    function NoOpCombat() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    NoOpCombat.prototype.tick = function () {
-        return;
-    };
-    return NoOpCombat;
-}(CombatSystem));
-
-
 ;// CONCATENATED MODULE: ./src/lib/smartMoveLocations.ts
-var BAT1 = {
-    map: "cave",
-    x: 20,
-    y: -350
-};
-var BAT_BOSS = {
-    map: "cave",
-    x: 342,
-    y: -1170
-};
-var BAT2 = {
-    map: "cave",
-    x: 1188,
-    y: -12
-};
+var SmartMoveLocation = /** @class */ (function () {
+    function SmartMoveLocation(x, y, map, name) {
+        this.x = x;
+        this.y = y;
+        this.map = map;
+        this.name = name;
+    }
+    SmartMoveLocation.create = function (x, y, map, name) {
+        return new SmartMoveLocation(x, y, map, name);
+    };
+    SmartMoveLocation.createName = function (name) {
+        return new SmartMoveLocation(null, null, null, name);
+    };
+    SmartMoveLocation.prototype.get = function () {
+        if (!this.x && !this.y && !this.map)
+            return this.name;
+        return this;
+    };
+    return SmartMoveLocation;
+}());
+var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
+var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
+var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
 
 ;// CONCATENATED MODULE: ./src/start.ts
 
@@ -2349,22 +2490,21 @@ var BAT2 = {
 
 
 var characters = {};
-var C_FULL_PARTY_MEMBERS = ["Zett", "Zetchant", "Zettex", "Zetd", "Zeter", "Zetx", "Zetadin"];
-characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
+characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant(), 
 // new SoloLocation("bat", "mvampire", 10),
-new SoloLocation(BAT_BOSS, 5, "mvampire"), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
-characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
+new SoloLocation(BAT_BOSS, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
 // new KiteCombat(),
-new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation(BAT1, 5), 
+new SoloCombat(), new UseMerchant(), new SoloLocation(BAT1, 5), 
 // new FollowPartyLocation(),
-new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
-characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
+new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(), 
 // new FollowPartyLocation(),
-new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
-characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
-characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
-characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant("Zetchant", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
+characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
+characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

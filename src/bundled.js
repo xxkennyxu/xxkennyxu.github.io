@@ -2014,6 +2014,9 @@ var LocationSystem = /** @class */ (function (_super) {
             smart: smart
         };
     };
+    LocationSystem.prototype.setLocation = function (location) {
+        parent.currentLocation = location;
+    };
     return LocationSystem;
 }(System));
 
@@ -2055,11 +2058,10 @@ var worldBossSmartMoveLocation = {
 };
 var SoloLocation = /** @class */ (function (_super) {
     soloLocation_extends(SoloLocation, _super);
-    function SoloLocation(mobDestination, locationChangeIntervalMin, bossDestination) {
+    function SoloLocation(mobDestination, locationChangeIntervalMin) {
         var _this = _super.call(this) || this;
         _this.mobDestination = mobDestination;
         _this.locationChangeIntervalMin = locationChangeIntervalMin;
-        _this.bossDestination = bossDestination;
         _this.lastDestinationChangeAt = pastDatePlusMins(locationChangeIntervalMin + 1);
         parent.currentLocation = "?";
         return _this;
@@ -2068,7 +2070,7 @@ var SoloLocation = /** @class */ (function (_super) {
         // checking HP here to make sure we're engaged and not short circuiting due to target being dropped
         if (getCombatSystem().currentState === CombatState.WORLD_BOSS || getCombatSystem().currentState === CombatState.BOSS) {
             if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
-                parent.currentLocation = "?";
+                this.setLocation("boss");
                 this.forceNextLocation();
             }
         }
@@ -2077,7 +2079,6 @@ var SoloLocation = /** @class */ (function (_super) {
             if (secSince(this.lastDestinationChangeAt) > 30) {
                 this.smartMove(parent.S["grinch"], "grinch");
                 this.lastDestinationChangeAt = new Date();
-                parent.currentLocation = "?";
                 this.forceNextLocation();
             }
         }
@@ -2091,7 +2092,6 @@ var SoloLocation = /** @class */ (function (_super) {
     SoloLocation.prototype.moveToNextLocation = function () {
         var nextLocation;
         var nextLocationName = "???";
-        var isNextLocationBoss = false;
         // always goes to bosses in order
         for (var boss in worldBossCheck) {
             var worldBossName = worldBossCheck[boss];
@@ -2101,34 +2101,28 @@ var SoloLocation = /** @class */ (function (_super) {
             if (worldBoss) {
                 nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
                 nextLocationName = worldBossName;
-                isNextLocationBoss = true;
                 this.forceNextLocation();
             }
         }
         if (!nextLocation) {
-            if (!this.bossDestination || parent.currentLocation === "?" || character.map === "bank") {
-                if (typeof this.mobDestination === "string") {
-                    nextLocation = nextLocationName = this.mobDestination;
-                }
-                else {
-                    nextLocation = this.mobDestination.get();
-                    nextLocationName = this.mobDestination.name;
-                }
+            if (typeof this.mobDestination === "string") {
+                nextLocation = nextLocationName = this.mobDestination;
             }
             else {
-                nextLocation = this.bossDestination;
-                nextLocationName = this.bossDestination;
-                isNextLocationBoss = true;
+                nextLocation = this.mobDestination.get();
+                nextLocationName = this.mobDestination.name;
             }
         }
+        if (nextLocationName === parent.currentLocation) {
+            getLoggingSystem().addLogMessage("@" + trimString(nextLocationName), "t_location");
+            return;
+        }
         var locChangeSecs = this.locationChangeIntervalMin * 60;
-        getLoggingSystem().addLogMessage("&#9758; " + trimString(nextLocationName) + " " + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
+        getLoggingSystem().addLogMessage("&#9758; " + trimString(parent.currentLocation) + "->" + trimString(nextLocationName) + " " + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
             this.smartMove(nextLocation, nextLocationName);
             this.lastDestinationChangeAt = new Date();
-            if (isNextLocationBoss) {
-                parent.currentLocation = "?";
-            }
+            this.setLocation(nextLocationName);
         }
     };
     return SoloLocation;

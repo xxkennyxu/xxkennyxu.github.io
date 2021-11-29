@@ -3,7 +3,7 @@
 var __webpack_exports__ = {};
 
 ;// CONCATENATED MODULE: ./src/lib/utils.ts
-var GLOBAL_FUNCTIONS = [z, zUi, zChar];
+var GLOBAL_FUNCTIONS = [z, zUi, zStart, zStop, zStopAll, zGiveaway];
 function getPartySystem() {
     return parent.partySystem;
 }
@@ -118,13 +118,30 @@ function fixAddLog() {
     };
     parent.addLogFixed = true;
 }
-var loggedDebug = false;
-function debugLog(message, ms) {
+function logException(name, exception) {
+    debugLog(name + ": " + exception, "exception");
+    console.log(name + ": " + exception);
+}
+var loggedDebug = {};
+function debugLog(message, key, ms) {
+    if (key === void 0) { key = ""; }
     if (ms === void 0) { ms = 5000; }
-    if (!loggedDebug) {
+    if (!key.length) {
+        for (var i = 0; i < message.length; i++) {
+            if (i % 2 == 0)
+                key += message[i];
+        }
+    }
+    if (!loggedDebug[key] || mssince(loggedDebug[key]) > ms) {
         game_log(message);
-        loggedDebug = true;
-        setInterval(function () { return loggedDebug = false; }, ms);
+        loggedDebug[key] = new Date();
+    }
+}
+var throttleMap = {};
+function throttle(f, ms) {
+    if (!throttleMap[f.name] || mssince(throttleMap[f.name]) > ms) {
+        f();
+        throttleMap[f.name] = new Date();
     }
 }
 // export function addButtonToUI(buttonText: string, func: Function) {
@@ -163,7 +180,7 @@ function z() {
     });
     game_log("Available Functions: [" + functionList + "]");
 }
-function zChar(name, slot) {
+function zStart(name, slot) {
     if (slot) {
         start_character(name, slot);
     }
@@ -173,6 +190,12 @@ function zChar(name, slot) {
     setTimeout(function () {
         zUi();
     }, 5000);
+}
+function zStop(name) {
+    stop_character(name);
+}
+function zStopAll() {
+    getPartySystem().partyMembers.forEach(function (member) { return stop_character(member); });
 }
 function zUi() {
     var iframes = parent.$('#iframelist iframe');
@@ -188,6 +211,22 @@ function zUi() {
         iframe.contentDocument.body.getElementsByTagName("div")[0].style.marginBottom = "";
         iframe.contentDocument.body.getElementsByTagName("div")[0].style.border = "";
         iframe.contentDocument.body.getElementsByTagName("div")[1].style.fontSize = "15px";
+    }
+}
+function zGiveaway() {
+    for (var id in parent.entities) {
+        var entity = parent.entities[id];
+        if (entity.id != character.id) {
+            for (var slot_name in entity.slots) {
+                var slot = entity.slots[slot_name];
+                if (slot && slot.giveaway) {
+                    if (!slot.list.includes(character.id)) {
+                        game_log("Joining [" + entity.name + "] giveaway (" + slot_name + ", " + entity.id + ", " + slot.rid + ")");
+                        parent.join_giveaway(slot_name, entity.id, slot.rid);
+                    }
+                }
+            }
+        }
     }
 }
 var Server;
@@ -361,13 +400,23 @@ var Character = /** @class */ (function () {
         parent.loggingSystem = this.loggingSystem;
         this.characterFunction.setup();
         setInterval(function () {
-            _this.loggingSystem.tick();
+            try {
+                _this.loggingSystem.tick();
+            }
+            catch (exception) {
+                logException(_this.loggingSystem.getName(), exception);
+            }
             if (character.rip) {
                 respawn();
                 parent.currentLocation = "?";
                 return;
             }
-            _this.characterFunction.beforeBusy();
+            try {
+                _this.characterFunction.beforeBusy();
+            }
+            catch (exception) {
+                logException("charFunc->beforeBusy", exception);
+            }
             if (is_moving(character) || smart.moving || isQBusy())
                 return;
             // TODO: hack
@@ -377,13 +426,30 @@ var Character = /** @class */ (function () {
                 });
                 return;
             }
-            _this.characterFunction.tick();
+            try {
+                _this.characterFunction.tick();
+            }
+            catch (exception) {
+                logException("charFunc->tick", exception);
+            }
             _this.systemFunc();
-            _this.characterFunction.afterSystem();
+            try {
+                _this.characterFunction.afterSystem();
+            }
+            catch (exception) {
+                logException("charFunc->afterSystem", exception);
+            }
         }, ms);
     };
     Character.prototype.systemFunc = function () {
-        this.systems.forEach(function (system) { return system === null || system === void 0 ? void 0 : system.tick(); });
+        this.systems.forEach(function (system) {
+            try {
+                system.tick();
+            }
+            catch (exception) {
+                logException(system.getName(), exception);
+            }
+        });
     };
     return Character;
 }());
@@ -438,13 +504,13 @@ function canUseSkill(skill, target) {
         var hasItems = checkItemReqs(skill.itemReq);
         var hasMp = character.mp >= skill.mpCost;
         if (!hasCharacterReq) {
-            game_log("Doesn't meet character requirements for " + skill.name);
+            debugLog("Doesn't meet character requirements for " + skill.name);
         }
         if (!hasItems) {
-            game_log("Doesn't meet item requirements for " + skill.name);
+            debugLog("Doesn't meet item requirements for " + skill.name);
         }
         if (!hasMp) {
-            game_log("Not enough MP for " + skill.name);
+            debugLog("Not enough MP for " + skill.name);
         }
         return hasCharacterReq && hasItems && hasMp && !is_on_cooldown(skill.name) && (!target || (target && is_in_range(target, skill.name)));
     }
@@ -782,6 +848,9 @@ var InventorySystem = /** @class */ (function () {
         this.hpPotName = hpPotName;
         this.mpPotName = mpPotName;
     }
+    InventorySystem.prototype.getName = function () {
+        return "InventorySystem";
+    };
     InventorySystem.prototype.restockPotionsAt = function (pot, useCmRestock) {
         var _this = this;
         if (locate_item(pot) === -1 || character.items[locate_item(pot)].q < this.potQtyThreshold) {
@@ -871,6 +940,9 @@ var LoggingSystem = /** @class */ (function () {
         this.lastMessageLoggedAt = new Date();
         this.messageQueue = {};
     }
+    LoggingSystem.prototype.getName = function () {
+        return "LoggingSystem";
+    };
     LoggingSystem.prototype.tick = function () {
         if (mssince(this.lastMessageLoggedAt) < this.refreshMs)
             return;
@@ -937,7 +1009,7 @@ var C_MERCHANT_STAND_LOCATION = {
     y: 0
 };
 var C_MERCHANT_SELL_ITEM_VALUE_MULT = 4;
-var C_MERCHANT_OPENED_BANKS = 3;
+var C_MERCHANT_OPENED_BANKS = 4;
 var ZetchantMerchant = /** @class */ (function (_super) {
     zetchant_merchant_extends(ZetchantMerchant, _super);
     function ZetchantMerchant(skills) {
@@ -988,7 +1060,10 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     };
     ZetchantMerchant.prototype.setup = function () {
         _super.prototype.setup.call(this);
-        zUi();
+        setInterval(function () {
+            game_log("checking giveaways...");
+            zGiveaway();
+        }, 10 * 1000);
     };
     ZetchantMerchant.prototype.beforeBusy = function () {
         _super.prototype.beforeBusy.call(this);
@@ -1372,7 +1447,6 @@ var ZettexRogue = /** @class */ (function (_super) {
 var C_IGNORE_MONSTER = ["Target Automatron"];
 var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr."];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
-var C_COMBAT_BOSS_HP_THRESHOLD = 10000;
 var C_PARTY_ATTACK_DISTANCE_THRESHOLD = 100;
 var C_LOG_ICON = "&#128924;"; // &#127919;
 var CombatDifficulty;
@@ -1393,6 +1467,9 @@ var CombatSystem = /** @class */ (function () {
         this.preAttackFunc = preAttackFunc;
         this.postAttackFunc = postAttackFunc;
     }
+    CombatSystem.prototype.getName = function () {
+        return "CombatSystem";
+    };
     CombatSystem.prototype.setPreAttack = function (func) {
         this.preAttackFunc = func;
     };
@@ -1489,20 +1566,18 @@ var CombatSystem = /** @class */ (function () {
         if (!entities.length)
             return bossTarget;
         bossTarget = entities[0];
-        if (bossTarget.max_hp > C_COMBAT_BOSS_HP_THRESHOLD) {
-            var combatPartyMemberCount = 0;
-            var combatPartyMembers = getPartySystem().combatPartyMembers;
-            for (var i in combatPartyMembers) {
-                var party_member = combatPartyMembers[i];
-                var player = get_player(party_member);
-                if (player && player.visible && distance(character, player) < 200) {
-                    combatPartyMemberCount++;
-                }
+        var combatPartyMemberCount = 0;
+        var combatPartyMembers = getPartySystem().combatPartyMembers;
+        for (var i in combatPartyMembers) {
+            var party_member = combatPartyMembers[i];
+            var player = get_player(party_member);
+            if (player && player.visible && distance(character, player) < 200) {
+                combatPartyMemberCount++;
             }
-            if (combatPartyMemberCount != 3) {
-                getPartySystem().assembleCombatMembers();
-                bossTarget = null;
-            }
+        }
+        if (combatPartyMemberCount != 3) {
+            getPartySystem().assembleCombatMembers();
+            bossTarget = null;
         }
         return bossTarget;
     };
@@ -1549,10 +1624,10 @@ var CombatSystem = /** @class */ (function () {
             return CombatDifficulty.MEDIUM;
         }
         else if (percentHpRemaining > .3) {
-            debugLog("HARD: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ".\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n");
+            debugLog("HARD: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ".\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
             return CombatDifficulty.HARD;
         }
-        debugLog("DEATH: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult.\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n");
+        debugLog("DEATH: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult.\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
         return CombatDifficulty.DEATH;
     };
     CombatSystem.prototype.shouldFollowLeaderAttack = function () {
@@ -1736,6 +1811,9 @@ var SoloCombat = /** @class */ (function (_super) {
 var LocationSystem = /** @class */ (function () {
     function LocationSystem() {
     }
+    LocationSystem.prototype.getName = function () {
+        return "LocationSystem";
+    };
     LocationSystem.prototype.smartMove = function (dest, destinationName) {
         if (isStandOpen())
             close_stand();
@@ -1849,6 +1927,9 @@ var PartySystem = /** @class */ (function () {
                 accept_party_invite(name);
         };
     }
+    PartySystem.prototype.getName = function () {
+        return "PartySystem";
+    };
     PartySystem.prototype.tick = function () {
         var _this = this;
         // TODO: instantiate combatPartyMembers differently... inventorySystem is not instantiated during ctor
@@ -2213,10 +2294,14 @@ var KiteCombat = /** @class */ (function (_super) {
         if (targetDistance < 50 // i'm too close
             // monster is targeting me and attack is on cooldown
             || target.target === character.name && is_on_cooldown("attack") && targetDistance < 75) {
-            move(
-            // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
-            // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
-            character.x - (target.x - character.x) / 4, character.y - (target.y - character.y) / 4);
+            var targetX = character.x - (target.x - character.x) / 4;
+            var targetY = character.y - (target.y - character.y) / 4;
+            if (can_move_to(targetX, targetY)) {
+                move(
+                // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
+                // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
+                character.x - (target.x - character.x) / 4, character.y - (target.y - character.y) / 4);
+            }
         }
         this.attack(target);
     };
@@ -2224,7 +2309,37 @@ var KiteCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
+;// CONCATENATED MODULE: ./src/systems/combat/noOpCombat.ts
+var noOpCombat_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+var NoOpCombat = /** @class */ (function (_super) {
+    noOpCombat_extends(NoOpCombat, _super);
+    function NoOpCombat() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    NoOpCombat.prototype.tick = function () {
+        return;
+    };
+    return NoOpCombat;
+}(CombatSystem));
+
+
 ;// CONCATENATED MODULE: ./src/start.ts
+
 
 
 
@@ -2257,8 +2372,7 @@ characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new Sol
 new SoloLocation("bat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
-characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), null, // combat system
-new IsMerchant("Zetchant", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
+characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant("Zetchant", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

@@ -195,7 +195,7 @@ function zStop(name) {
     stop_character(name);
 }
 function zStopAll() {
-    getPartySystem().partyMembers.forEach(function (member) { return stop_character(member); });
+    ["Zetd", "Zettex", "Zetchant"].forEach(function (member) { return stop_character(member); });
 }
 function zUi() {
     var iframes = parent.$('#iframelist iframe');
@@ -1035,6 +1035,10 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
             new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),
             new UpgradeItem("wbook0", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("strring", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("intring", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("dexring", 3, UpgradeType.COMPOUND),
+            new UpgradeItem("vitring", 3, UpgradeType.COMPOUND),
             new UpgradeItem("strearring", 3, UpgradeType.COMPOUND),
             new UpgradeItem("intearring", 3, UpgradeType.COMPOUND),
             new UpgradeItem("dexearring", 3, UpgradeType.COMPOUND),
@@ -1063,7 +1067,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         setInterval(function () {
             game_log("checking giveaways...");
             zGiveaway();
-        }, 10 * 1000);
+        }, 30 * 60 * 1000); // 30 minutes
     };
     ZetchantMerchant.prototype.beforeBusy = function () {
         _super.prototype.beforeBusy.call(this);
@@ -1443,7 +1447,6 @@ var ZettexRogue = /** @class */ (function (_super) {
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
 
 
-
 var C_IGNORE_MONSTER = ["Target Automatron"];
 var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr."];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
@@ -1504,15 +1507,6 @@ var CombatSystem = /** @class */ (function () {
      *  4. Find the closest monster [non-boss/non-ignored] (repeat this in case of respawns)
      */
     CombatSystem.prototype.getTarget = function () {
-        var shouldFollowLeaderAttack = this.shouldFollowLeaderAttack();
-        // 0 - Pick Party Leader Target
-        if (shouldFollowLeaderAttack) {
-            var partyLeaderTarget = parent.entities[getPartySystem().partyLeader];
-            if (!partyLeaderTarget || (partyLeaderTarget && distance(character, partyLeaderTarget) > 200)) {
-                sendComingRequest(getPartySystem().partyLeader);
-            }
-            return { target: getPartySystem().getPartyLeaderTarget(), attackType: 0 };
-        }
         // -1 only keep target if its targeting me
         var targetResult = { target: null, attackType: null };
         var target = this.getTargetedMonster();
@@ -1527,6 +1521,8 @@ var CombatSystem = /** @class */ (function () {
             var bossTarget = this.getBossTarget();
             // 4 - Pick a free target if the difficulty is below MEDIUM combat difficulty
             var freeBeatableTarget = this.getFreeTarget(CombatDifficulty.MEDIUM);
+            // 5 - find the party leader's target
+            var partyLeaderTarget = getPartySystem().getPartyLeaderTarget();
             if (worldBossTarget) {
                 targetResult.target = worldBossTarget;
                 targetResult.attackType = 1;
@@ -1543,6 +1539,10 @@ var CombatSystem = /** @class */ (function () {
                 targetResult.target = freeBeatableTarget;
                 targetResult.attackType = 4;
             }
+            else if (partyLeaderTarget) {
+                targetResult.target = partyLeaderTarget;
+                targetResult.attackType = 5;
+            }
         }
         else {
             targetResult.target = target;
@@ -1550,7 +1550,7 @@ var CombatSystem = /** @class */ (function () {
         }
         // 5 - Find nearest monster
         if (!targetResult.target) {
-            return { target: this.getNearestMonster(), attackType: 5 };
+            return { target: this.getNearestMonster(), attackType: 0 };
         }
         return targetResult;
     };
@@ -1571,7 +1571,7 @@ var CombatSystem = /** @class */ (function () {
         for (var i in combatPartyMembers) {
             var party_member = combatPartyMembers[i];
             var player = get_player(party_member);
-            if (player && player.visible && distance(character, player) < 200) {
+            if (player && player.visible && distance(character, player) < 300) {
                 combatPartyMemberCount++;
             }
         }
@@ -1629,23 +1629,6 @@ var CombatSystem = /** @class */ (function () {
         }
         debugLog("DEATH: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult.\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
         return CombatDifficulty.DEATH;
-    };
-    CombatSystem.prototype.shouldFollowLeaderAttack = function () {
-        if (character.name === getPartySystem().partyLeader)
-            return false;
-        if (getHpPercent() < .5)
-            return true;
-        var shouldFollowLeaderAttack = true;
-        for (var id in parent.entities) {
-            var current = parent.entities[id];
-            if (current.type != "monster")
-                continue;
-            if (distance(character, current) > C_PARTY_ATTACK_DISTANCE_THRESHOLD)
-                continue;
-            if (this.combatDifficulty(current) <= CombatDifficulty.MEDIUM)
-                shouldFollowLeaderAttack = false;
-        }
-        return shouldFollowLeaderAttack;
     };
     CombatSystem.prototype.getTargetedMonster = function () {
         if (parent.ctarget && !parent.ctarget.dead && parent.ctarget.type === "monster")
@@ -1886,7 +1869,7 @@ var SoloLocation = /** @class */ (function (_super) {
         var target = get_target();
         if (target && (getCombatSystem().isBoss(target) || getCombatSystem().isWorldBoss(target)))
             return;
-        var nextLocation;
+        var nextLocation; // TODO
         if (!this.bossDestination || this.atBoss || parent.currentLocation === "?" || character.map === "bank") {
             nextLocation = this.mobDestination;
         }
@@ -1896,7 +1879,7 @@ var SoloLocation = /** @class */ (function (_super) {
         if (nextLocation === parent.currentLocation)
             return;
         var locChangeSecs = this.locationChangeIntervalMin * 60;
-        getLoggingSystem().addLogMessage("&#9758; " + trimString(nextLocation) + "-" + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
+        // getLoggingSystem().addLogMessage(`&#9758; ${trimString(nextLocation)}-${timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt)}`, "t_location")
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
             this.smartMove(nextLocation);
             this.atBoss = nextLocation === this.bossDestination;
@@ -2339,7 +2322,25 @@ var NoOpCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
+;// CONCATENATED MODULE: ./src/lib/smartMoveLocations.ts
+var BAT1 = {
+    map: "cave",
+    x: -210,
+    y: 480
+};
+var BAT_BOSS = {
+    map: "cave",
+    x: 342,
+    y: -1170
+};
+var BAT2 = {
+    map: "cave",
+    x: 1188,
+    y: -12
+};
+
 ;// CONCATENATED MODULE: ./src/start.ts
+
 
 
 
@@ -2363,14 +2364,14 @@ var characters = {};
 var C_FULL_PARTY_MEMBERS = ["Zett", "Zetchant", "Zettex", "Zetd", "Zeter", "Zetx", "Zetadin"];
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
 // new SoloLocation("bat", "mvampire", 10),
-new SoloLocation("bat", 5, "mvampire"), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(BAT_BOSS, 5, "mvampire"), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation("bat", 5), 
+characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation(BAT1, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
 // new FollowPartyLocation(),
-new SoloLocation("bat", 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new FollowPartyLocation(), new LoggingSystem(), new PartySystem("Zetadin", C_FULL_PARTY_MEMBERS));
 characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant("Zetchant", 3000), new NoOpLocation(), new LoggingSystem(), new PartySystem("Zett", C_FULL_PARTY_MEMBERS));

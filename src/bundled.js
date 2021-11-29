@@ -2246,56 +2246,6 @@ var IsMerchant = /** @class */ (function (_super) {
 }(InventorySystem));
 
 
-;// CONCATENATED MODULE: ./src/systems/combat/kiteCombat.ts
-var kiteCombat_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-var KiteCombat = /** @class */ (function (_super) {
-    kiteCombat_extends(KiteCombat, _super);
-    function KiteCombat() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    KiteCombat.prototype.tick = function () {
-        var target = this.findTarget();
-        if (!target)
-            return;
-        change_target(target);
-        if (!this.isBoss(target) && !this.isWorldBoss(target) && target.max_hp < character.attack * 2) {
-            this.attack(target);
-            return;
-        }
-        var targetDistance = distance(character, target);
-        if (targetDistance < 50 // i'm too close
-            // monster is targeting me and attack is on cooldown
-            || target.target === character.name && is_on_cooldown("attack") && targetDistance < 75) {
-            var targetX = character.x - (target.x - character.x) / 4;
-            var targetY = character.y - (target.y - character.y) / 4;
-            if (can_move_to(targetX, targetY)) {
-                move(
-                // character.x - Math.max(-1, Math.min(1, (target.x-character.x))),
-                // character.y - Math.max(-1, Math.min(1, (target.y-character.y)))
-                character.x - (target.x - character.x) / 4, character.y - (target.y - character.y) / 4);
-            }
-        }
-        this.attack(target);
-    };
-    return KiteCombat;
-}(CombatSystem));
-
-
 ;// CONCATENATED MODULE: ./src/systems/combat/noOpCombat.ts
 var noOpCombat_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -2362,14 +2312,15 @@ var BAT2 = {
 
 
 
-
 var characters = {};
 var C_FULL_PARTY_MEMBERS = ["Zett", "Zetchant", "Zettex", "Zetd", "Zeter", "Zetx", "Zetadin"];
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 
 // new SoloLocation("bat", "mvampire", 10),
 new SoloLocation(BAT_BOSS, 5, "mvampire"), new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem("Zetadin", ["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), new KiteCombat(), new UseMerchant("Zetchant"), new SoloLocation(BAT1, 5), 
+characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
+// new KiteCombat(),
+new SoloCombat(), new UseMerchant("Zetchant"), new SoloLocation(BAT1, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem("Zett", ["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant("Zetchant"), 

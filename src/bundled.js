@@ -27,6 +27,9 @@ var AlDataClient = /** @class */ (function () {
                 game_log("loading from cache, " + timePassedInMinutes + " minutes old");
                 return;
             }
+            else {
+                AlDataClient.alData = {};
+            }
         }
         //create XMLHttpRequest object
         var xhr = new XMLHttpRequest();
@@ -181,13 +184,13 @@ function isQBusy() {
 }
 function isWorldBossReady(bossName) {
     var parentWorldBoss = getParentWorldBoss(bossName);
-    var isSpawningSoonParent = msConvert(timeTillWorldBoss(parentWorldBoss), TimeIn.MINUTES) < 1;
+    var isSpawningSoonParent = msConvert(timeTillWorldBoss(parentWorldBoss), TimeIn.MINUTES) < 2;
     // prioritize current server
     if (parentWorldBoss.live || isSpawningSoonParent) {
         return parentWorldBoss;
     }
     var alWorldBoss = getAlWorldBoss(bossName);
-    var isSpawningSoonAl = msConvert(timeTillWorldBoss(alWorldBoss), TimeIn.MINUTES) < 1;
+    var isSpawningSoonAl = msConvert(timeTillWorldBoss(alWorldBoss), TimeIn.MINUTES) < 2;
     if (alWorldBoss.live || isSpawningSoonAl) {
         return alWorldBoss;
     }
@@ -2353,7 +2356,7 @@ var SoloLocation = /** @class */ (function (_super) {
             }
         }
         // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
-        if (!bossSpawningSoon && "PVP" != server.id || "US" != server.region) {
+        if (!bossSpawningSoon && ("PVP" != server.id || "US" != server.region)) {
             changeServer("US", "PVP");
         }
         if (!nextLocation) {

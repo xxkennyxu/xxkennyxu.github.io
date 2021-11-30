@@ -188,12 +188,12 @@ function isWorldBossReady(bossName) {
     var parentWorldBoss = getParentWorldBoss(bossName);
     var isSpawningSoonParent = msConvert(timeTillWorldBoss(parentWorldBoss), TimeIn.MINUTES) < 2;
     // prioritize current server
-    if (parentWorldBoss.live || isSpawningSoonParent) {
+    if (parentWorldBoss && (parentWorldBoss.live || isSpawningSoonParent)) {
         return parentWorldBoss;
     }
     var alWorldBoss = getAlWorldBoss(bossName);
     var isSpawningSoonAl = msConvert(timeTillWorldBoss(alWorldBoss), TimeIn.MINUTES) < 2;
-    if (alWorldBoss.live || isSpawningSoonAl) {
+    if (alWorldBoss && (alWorldBoss.live || isSpawningSoonAl)) {
         return alWorldBoss;
     }
     return null;

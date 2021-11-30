@@ -61,9 +61,14 @@ function isWorldBossReady(bossName) {
     var worldBosses = getWorldBosses();
     if (!worldBosses[bossName])
         return null;
-    var isAlive = worldBosses[bossName].live;
-    var isSpawningSoon = msConvert(timeTillWorldBoss(bossName), TimeIn.MINUTES) < 2;
-    return (isAlive || isSpawningSoon) ? worldBosses[bossName] : null;
+    var worldBoss = worldBosses[bossName];
+    var isAlive = worldBoss.live;
+    var isSpawningSoon = msConvert(timeTillWorldBoss(bossName), TimeIn.MINUTES) < 1;
+    var hasEnoughHpLeft = worldBoss.hp / worldBoss.maxHp > .1;
+    return (isAlive && hasEnoughHpLeft) || isSpawningSoon ? worldBoss : null;
+}
+function createDivWithColor(text, color, size) {
+    return "<div style=\"" + (size ? "font-size:" + size + "px;" : "") + " color:" + color + "; display: inline; padding-bottom: 1px; padding-top: 1px;\">" + text + "</div>";
 }
 var TimeIn;
 (function (TimeIn) {
@@ -153,6 +158,16 @@ function fixAddLog() {
     };
     parent.addLogFixed = true;
 }
+function modifyUi() {
+    if (parent.modifyUi) {
+        return;
+    }
+    parent.modifyUi = true; // DO NOT MOVE AS IT CRASHES ON bottomPanel.insertBefore LINE
+    var iFrameList = parent.$('#iframelist')[0];
+    var bottomPanel = parent.$('#bottommid')[0];
+    var pausedUi = parent.$("#pausedui")[0];
+    bottomPanel.insertBefore(iFrameList, pausedUi);
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function logException(name, exception) {
     debugLog(name + ": " + exception, "exception");
@@ -237,11 +252,16 @@ function zStopAll() {
     ["Zetd", "Zettex", "Zetchant"].forEach(function (member) { return stop_character(member); });
 }
 function zUi() {
+    // parent.$('#bottomrightcorner')[0].style.display = "flex";
+    // parent.$('#bottomrightcorner .xpsui')[0].style.height = "30px";
+    var iFrameList = parent.$('#iframelist')[0];
+    iFrameList.style.display = "flex";
     var iframes = parent.$('#iframelist iframe');
     for (var i in iframes) {
         var iframe = iframes[i];
         if (!iframe.contentDocument)
             continue;
+        iframe.style.height = "120px";
         iframe.contentDocument.body.style.marginTop = "1px";
         iframe.contentDocument.body.style.marginLeft = "";
         iframe.contentDocument.body.style.marginRight = "";
@@ -373,13 +393,15 @@ var CharacterFunction = /** @class */ (function () {
     CharacterFunction.prototype.beforeBusy = function () {
         this.hpPotUse();
         this.mpPotUse();
+        loot();
     };
     CharacterFunction.prototype.afterSystem = function () {
-        loot();
+        //loot();
     };
     CharacterFunction.prototype.setup = function () {
         fixAddLog();
         addGlobalFunctions();
+        modifyUi();
     };
     CharacterFunction.prototype.hpPotUse = function () {
         if (is_on_cooldown("use_hp") || safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
@@ -415,7 +437,7 @@ var Character = /** @class */ (function () {
         this.loggingSystem = loggingSystem;
         this.partySystem = partySystem;
         this.started = false;
-        this.systems = [combatSystem, locationSystem, partySystem, inventorySystem];
+        this.systems = [locationSystem, combatSystem, partySystem, inventorySystem];
     }
     Character.prototype.start = function (ms) {
         var _this = this;
@@ -455,7 +477,7 @@ var Character = /** @class */ (function () {
                 return;
             // TODO: hack
             if (!character.s.holidayspirit) {
-                _this.locationSystem.smartMove("town").then(function () {
+                _this.locationSystem.smartMove("town", "xmas-buff").then(function () {
                     parent.socket.emit("interaction", { type: "newyear_tree" });
                 });
                 return;
@@ -946,6 +968,9 @@ var InventorySystem = /** @class */ (function (_super) {
     InventorySystem.prototype.getName = function () {
         return "InventorySystem";
     };
+    InventorySystem.prototype.getLogIcon = function () {
+        return createDivWithColor("&#128093;", "", 10);
+    };
     InventorySystem.prototype.setPotQtyThreshold = function (num) {
         this.potQtyThreshold = num;
         return this;
@@ -957,7 +982,7 @@ var InventorySystem = /** @class */ (function (_super) {
                 sendBringPotionCommand(InventorySystem.merchantName, pot);
             }
             else {
-                utils_getLocationSystem().smartMove("town").then(function () {
+                utils_getLocationSystem().smartMove("town", "town").then(function () {
                     buy(pot, _this.potQtyThreshold);
                 });
             }
@@ -968,7 +993,7 @@ var InventorySystem = /** @class */ (function (_super) {
         if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
         var num_items = this.inventorySize();
         if (num_items >= threshold) {
-            return utils_getLocationSystem().smartMove("bank").then(function () {
+            return utils_getLocationSystem().smartMove("bank", "bank").then(function () {
                 for (var i = 0; i < character.items.length; i++) {
                     var item = character.items[i];
                     if (!item)
@@ -1059,30 +1084,33 @@ var LoggingSystem = /** @class */ (function (_super) {
     LoggingSystem.prototype.getName = function () {
         return "LoggingSystem";
     };
+    LoggingSystem.prototype.getLogIcon = function () {
+        throw new Error("Method not implemented.");
+    };
     LoggingSystem.prototype.tick = function () {
         if (!canCall("displayLogMessages", this.getName(), 1000))
             return;
         this.displayLogMessages();
     };
     LoggingSystem.prototype.displayLogMessages = function () {
-        var display_msg = Math.trunc(getHpPercent() * 100) + "%/" + Math.trunc(getMpPercent() * 100) + "% | Lv" + character.level + " (" + Math.trunc(character.xp / character.max_xp * 100) + "%)<br>";
-        var first_message = true;
+        var hpDiv = createDivWithColor(Math.trunc(getHpPercent() * 100) + "%", "indianred");
+        var mpDiv = createDivWithColor(Math.trunc(getMpPercent() * 100) + "%", "lightblue");
+        var lvlDiv = createDivWithColor("Lv" + character.level + " (" + Math.trunc(character.xp / character.max_xp * 100) + "%)", "greenyellow");
+        var display_msg = hpDiv + "/" + mpDiv + " | " + lvlDiv;
         for (var k in this.messageQueue) {
-            if (!first_message)
-                display_msg += " | ";
+            display_msg += "<br>";
             display_msg += this.messageQueue[k];
-            first_message = false;
         }
         if (display_msg === "")
             return;
         set_message(display_msg);
-        var has_moving = smart.moving
-            && this.messageQueue[C_MESSAGE_TYPE_WALKING]
-            ? this.messageQueue[C_MESSAGE_TYPE_WALKING]
-            : null;
-        this.messageQueue = {};
-        if (has_moving) {
-            this.messageQueue[C_MESSAGE_TYPE_WALKING] = has_moving;
+        var has_moving = smart.moving;
+        // && this.messageQueue[C_MESSAGE_TYPE_WALKING] 
+        // ? this.messageQueue[C_MESSAGE_TYPE_WALKING]
+        // : null;
+        // this.messageQueue = {};
+        if (!has_moving) {
+            delete this.messageQueue[C_MESSAGE_TYPE_WALKING];
         }
     };
     LoggingSystem.prototype.addLogMessage = function (message, msg_type) {
@@ -1272,7 +1300,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         if (!upgradeItem)
             return; // no items were found - upgrade queue is now 0
         if (distance(character, this.SCROLL_NPC) > 100) {
-            utils_getLocationSystem().smartMove("scrolls");
+            utils_getLocationSystem().smartMove("scrolls", "scrolls");
             return;
         }
         buff(this.getSkills().massproduction);
@@ -1434,7 +1462,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         });
     };
     ZetchantMerchant.prototype.getItemsFromBank = function (items) {
-        utils_getLocationSystem().smartMove("bank").then(function () {
+        utils_getLocationSystem().smartMove("bank", "bank").then(function () {
             for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
                 var packName = "items" + packNum;
                 if (!character.bank[packName])
@@ -1484,7 +1512,7 @@ var ZetdPriest = /** @class */ (function (_super) {
         return "Zetd";
     };
     ZetdPriest.prototype.tick = function () {
-        this.heal_party_members_percent(65);
+        this.heal_party_members_percent(85);
         for (var id in parent.entities) {
             var current = parent.entities[id];
             if (getCombatSystem().isBoss(current) && current.target && current.target != character.name && !current.s.cursed) {
@@ -1505,9 +1533,12 @@ var ZetdPriest = /** @class */ (function (_super) {
             if (getHpPercent(member) < percent / 100) {
                 if (can_heal(member) && !is_on_cooldown("heal"))
                     heal(member);
-                else if (distance(character, member) > 150) {
-                    move(character.x + (member.x - character.x) / 4, character.y + (member.y - character.y) / 4);
-                }
+                // else if (distance(character, member) > 150) {
+                // 	move(
+                // 		character.x+(member.x-character.x)/4,
+                // 		character.y+(member.y-character.y)/4
+                // 	);
+                // }
             }
         });
     };
@@ -1581,7 +1612,6 @@ var combatSystem_extends = (undefined && undefined.__extends) || (function () {
 var C_IGNORE_MONSTER = ["Target Automatron"];
 var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr.", "Golden Bat"];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
-var C_LOG_ICON = "&#128924;"; // &#127919;
 var CombatDifficulty;
 (function (CombatDifficulty) {
     CombatDifficulty[CombatDifficulty["EASY"] = 1] = "EASY";
@@ -1591,13 +1621,13 @@ var CombatDifficulty;
 })(CombatDifficulty || (CombatDifficulty = {}));
 var CombatState;
 (function (CombatState) {
-    CombatState[CombatState["WORLD_BOSS"] = -99] = "WORLD_BOSS";
-    CombatState[CombatState["BOSS"] = -9] = "BOSS";
+    CombatState[CombatState["WB"] = -99] = "WB";
+    CombatState[CombatState["B"] = -9] = "B";
     CombatState[CombatState["NO_ENEMY"] = -1] = "NO_ENEMY";
-    CombatState[CombatState["TARGETING_ME"] = 0] = "TARGETING_ME";
-    CombatState[CombatState["BEATABLE"] = 1] = "BEATABLE";
-    CombatState[CombatState["FOLLOW_PARTY_LEADER"] = 2] = "FOLLOW_PARTY_LEADER";
-    CombatState[CombatState["CLOSEST"] = 99] = "CLOSEST";
+    CombatState[CombatState["ATK_ME"] = 0] = "ATK_ME";
+    CombatState[CombatState["EASY"] = 1] = "EASY";
+    CombatState[CombatState["FOLLOW"] = 2] = "FOLLOW";
+    CombatState[CombatState["NEAR"] = 99] = "NEAR";
 })(CombatState || (CombatState = {}));
 var CombatSystem = /** @class */ (function (_super) {
     combatSystem_extends(CombatSystem, _super);
@@ -1611,6 +1641,9 @@ var CombatSystem = /** @class */ (function (_super) {
     }
     CombatSystem.prototype.getName = function () {
         return "CombatSystem";
+    };
+    CombatSystem.prototype.getLogIcon = function () {
+        return createDivWithColor("&#128924;", "orange", 10);
     };
     CombatSystem.prototype.setPreAttack = function (func) {
         this.preAttackFunc = func;
@@ -1659,28 +1692,28 @@ var CombatSystem = /** @class */ (function (_super) {
         var partyLeaderTarget = getPartySystem().getPartyLeaderTarget();
         if (monsterTargetingMe) {
             target = monsterTargetingMe;
-            this.currentState = CombatState.TARGETING_ME;
+            this.currentState = CombatState.ATK_ME;
         }
         else if (worldBossTarget) {
             target = worldBossTarget;
-            this.currentState = CombatState.WORLD_BOSS;
+            this.currentState = CombatState.WB;
         }
         else if (bossTarget) {
             target = bossTarget;
-            this.currentState = CombatState.BOSS;
+            this.currentState = CombatState.B;
         }
         else if (freeBeatableTarget) {
             target = freeBeatableTarget;
-            this.currentState = CombatState.BEATABLE;
+            this.currentState = CombatState.EASY;
         }
         else if (partyLeaderTarget) {
             target = partyLeaderTarget;
-            this.currentState = CombatState.FOLLOW_PARTY_LEADER;
+            this.currentState = CombatState.FOLLOW;
         }
         else {
             // 0 - Find nearest monster
             target = this.getNearestMonster();
-            this.currentState = CombatState.CLOSEST;
+            this.currentState = CombatState.NEAR;
         }
         if (!target) {
             this.currentState = CombatState.NO_ENEMY;
@@ -1824,7 +1857,7 @@ var CombatSystem = /** @class */ (function (_super) {
         if (!target) {
             return null;
         }
-        getLoggingSystem().addLogMessage("" + C_LOG_ICON + this.previousState + "->" + this.currentState + "_" + trimString(sinceConvert(this.currentStateSetTime, TimeIn.SECONDS).toString()) + " " + trimString(target.name), C_MESSAGE_TYPE_TARGET);
+        getLoggingSystem().addLogMessage(this.getLogIcon() + " " + CombatState[this.previousState] + "->" + CombatState[this.currentState] + "<br>" + this.getLogIcon() + " (" + sinceConvert(this.currentStateSetTime, TimeIn.SECONDS).toString() + ") " + target.name, C_MESSAGE_TYPE_TARGET);
         return target;
     };
     return CombatSystem;
@@ -1881,6 +1914,25 @@ var ZettWarrior = /** @class */ (function (_super) {
             start_character(partyMembers[i], "webpack");
         }
         setTimeout(function () { return zUi(); }, 30000);
+        // for(const server of parent.X.servers) {
+        // 	game_log(`Starting ws://${server.addr}:${server.port}`);
+        // 	const socket: Socket = parent.io(`ws://${server.addr}:${server.port}`, {transports: ["websocket"], reconnection: true, autoConnect: true})
+        // 	socket.on("server_info", (data: any) => {
+        // 		// Creates a listener for `server_data` (this is what feeds info in to parent.S)
+        // 		if(data && Object.keys(data).length > 0) {
+        // 			// There is some sort of data (i.e. not an empty object)
+        // 			if(data["franky"]) {
+        // 			// franky is alive!
+        // 			console.log(`franky is alive on ${server.region} ${server.name}!`)
+        // 			console.log(data["franky"])
+        // 			} else {
+        // 			// franky is not alive, but there might be another special monster's data available
+        // 			console.log(`New data for ${server.region} ${server.name}`)
+        // 			console.log(data)
+        // 			}
+        // 		}
+        // 	});
+        // }
     };
     ZettWarrior.prototype.tick = function () {
         // Party Logic
@@ -1890,7 +1942,7 @@ var ZettWarrior = /** @class */ (function (_super) {
                 && getCombatSystem().combatDifficulty(tar) > CombatDifficulty.MEDIUM
                 && (getPartySystem().partyMembers.includes(tar.target));
         });
-        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y + 5); });
+        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.real_x === member.real_x && character.real_y === member.real_y; }, function () { return move(character.x + 5, character.y + 5); });
         useSkill(this.getSkills().charge);
         if (!character.s.mluck)
             sendBuffRequest(InventorySystem.merchantName, "mluck");
@@ -1999,11 +2051,14 @@ var LocationSystem = /** @class */ (function (_super) {
     LocationSystem.prototype.getName = function () {
         return "LocationSystem";
     };
+    LocationSystem.prototype.getLogIcon = function () {
+        return createDivWithColor("&#128099;", "purple", 10);
+    };
     LocationSystem.prototype.smartMove = function (dest, destinationName) {
         if (isStandOpen())
             close_stand();
-        getLoggingSystem().addLogMessage("&#128099;" + (typeof dest === "object" ? destinationName : dest), C_MESSAGE_TYPE_WALKING);
-        parent.currentLocation = typeof dest === "object" ? (destinationName ? destinationName : "?") : dest;
+        getLoggingSystem().addLogMessage(this.getLogIcon() + " " + (typeof dest === "object" ? destinationName : dest), C_MESSAGE_TYPE_WALKING);
+        this.setLocation(destinationName);
         return smart_move(dest);
     };
     LocationSystem.prototype.getSmartMoveLocation = function (smartMoveLoc) {
@@ -2025,6 +2080,9 @@ var NoOpLocation = /** @class */ (function (_super) {
     function NoOpLocation() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
+    NoOpLocation.prototype.getLogIcon = function () {
+        return;
+    };
     NoOpLocation.prototype.tick = function () {
         return;
     };
@@ -2056,6 +2114,7 @@ var worldBossCheck = ["snowman"];
 var worldBossSmartMoveLocation = {
     "snowman": SNOWMAN
 };
+var C_ICON_DIV = createDivWithColor("@", "purple");
 var SoloLocation = /** @class */ (function (_super) {
     soloLocation_extends(SoloLocation, _super);
     function SoloLocation(mobDestination, locationChangeIntervalMin) {
@@ -2068,15 +2127,14 @@ var SoloLocation = /** @class */ (function (_super) {
     }
     SoloLocation.prototype.tick = function () {
         // checking HP here to make sure we're engaged and not short circuiting due to target being dropped
-        if (getCombatSystem().currentState === CombatState.WORLD_BOSS || getCombatSystem().currentState === CombatState.BOSS) {
+        if (getCombatSystem().currentState === CombatState.WB || getCombatSystem().currentState === CombatState.B) {
             if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
-                this.setLocation("boss");
                 this.forceNextLocation();
             }
         }
         else if (parent.S["grinch"].live) {
             // TODO: grinch is special, remove after even is over
-            if (secSince(this.lastDestinationChangeAt) > 30) {
+            if (secSince(this.lastDestinationChangeAt) > 5) {
                 this.smartMove(parent.S["grinch"], "grinch");
                 this.lastDestinationChangeAt = new Date();
                 this.forceNextLocation();
@@ -2113,16 +2171,17 @@ var SoloLocation = /** @class */ (function (_super) {
                 nextLocationName = this.mobDestination.name;
             }
         }
+        var locChangeSecs = timeRemainingInSeconds(60 * this.locationChangeIntervalMin, this.lastDestinationChangeAt);
+        var locationText = "" + parent.currentLocation;
+        if (parent.currentLocation != nextLocationName)
+            locationText += "->" + nextLocationName;
+        getLoggingSystem().addLogMessage(C_ICON_DIV + " " + locationText + " " + (locChangeSecs > 0 ? locChangeSecs : ""), "t_location");
         if (nextLocationName === parent.currentLocation) {
-            getLoggingSystem().addLogMessage("@" + trimString(nextLocationName), "t_location");
             return;
         }
-        var locChangeSecs = this.locationChangeIntervalMin * 60;
-        getLoggingSystem().addLogMessage("&#9758; " + trimString(parent.currentLocation) + "->" + trimString(nextLocationName) + " " + timeRemainingInSeconds(locChangeSecs, this.lastDestinationChangeAt), "t_location");
         if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
             this.smartMove(nextLocation, nextLocationName);
             this.lastDestinationChangeAt = new Date();
-            this.setLocation(nextLocationName);
         }
     };
     return SoloLocation;
@@ -2165,6 +2224,9 @@ var PartySystem = /** @class */ (function (_super) {
         };
         return _this;
     }
+    PartySystem.prototype.getLogIcon = function () {
+        throw new Error("Method not implemented.");
+    };
     PartySystem.prototype.setPartyLeader = function (name) {
         this.partyLeader = name;
         return this;
@@ -2400,7 +2462,6 @@ var C_SEND_ITEM_DISTANCE = 400;
 var C_MERCHANT_SEND_GOLD_THRESHOLD = 500000;
 var C_INVENTORY_DEFAULT_SIZE = 3; // 2 pots + tracker
 var C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD = C_INVENTORY_DEFAULT_SIZE + 2;
-var C_ICON = "&#128093;"; // &#128176;
 var UseMerchant = /** @class */ (function (_super) {
     useMerchant_extends(UseMerchant, _super);
     function UseMerchant() {
@@ -2416,7 +2477,7 @@ var UseMerchant = /** @class */ (function (_super) {
     UseMerchant.prototype.transferItemsToMerchant = function () {
         var inventorySize = this.inventorySize();
         var display = C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize;
-        getLoggingSystem().addLogMessage("" + C_ICON + display, C_MESSAGE_TYPE_MERCHANT);
+        getLoggingSystem().addLogMessage("" + this.getLogIcon() + display, C_MESSAGE_TYPE_MERCHANT);
         var maybeTarget = get_player(InventorySystem.merchantName);
         if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 10000)) {
             this.useMerchant();

@@ -1873,6 +1873,9 @@ var LoggingSystem = /** @class */ (function (_super) {
             else if (timeRemaining) {
                 wbLogging += "\n" + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
             }
+            else {
+                wbLogging += "\n" + createDivWithColor("[???] " + wbName + ": N/A", "red");
+            }
         }
         var display_msg = hpDiv + "/" + mpDiv + " | " + lvlDiv;
         display_msg += "" + statusLogging + inventoryLogging + combatLogging + locationLogging + movementLogging + wbLogging;

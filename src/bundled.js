@@ -1172,6 +1172,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
             new UpgradeItem("phelmet", 7),
             new UpgradeItem("sshield", 7),
             new UpgradeItem("firestaff", 7),
+            new UpgradeItem("fireblade", 7),
             new UpgradeItem("stinger", 8),
             new UpgradeItem("mcape", 6),
             new UpgradeItem("ringsj", 3, UpgradeType.COMPOUND),
@@ -1463,6 +1464,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
     };
     ZetchantMerchant.prototype.getItemsFromBank = function (items) {
         utils_getLocationSystem().smartMove("bank", "bank").then(function () {
+            // TODO race condition when entering bank, use states here instead
             for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
                 var packName = "items" + packNum;
                 if (!character.bank[packName])
@@ -1908,22 +1910,21 @@ var AlDataClient = /** @class */ (function () {
     AlDataClient.prototype.fetch = function () {
         //create XMLHttpRequest object
         var xhr = new XMLHttpRequest();
-        //open a get request with the remote server URL
-        xhr.open("GET", "https://aldata.info/api/ServerStatus");
-        //send the Http request
-        xhr.send();
         //triggered when the response is completed
         xhr.onload = function () {
             if (xhr.status === 200) {
                 //parse JSON datax`x
                 var data = JSON.parse(xhr.responseText);
-                console.log(data.count);
-                console.log(data.products);
+                console.log(data);
             }
             else if (xhr.status === 404) {
                 console.log("No records found");
             }
         };
+        //open a get request with the remote server URL
+        xhr.open("GET", "https://aldata.info/api/ServerStatus");
+        //send the Http request
+        xhr.send();
     };
     return AlDataClient;
 }());

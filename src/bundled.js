@@ -1382,6 +1382,10 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         // { level: 3, name: "hpamulet" },
         // { level: 3, name: "hpbelt" },
         ];
+        _this.SELL_LIST = [
+            { name: "xmace" },
+            { name: "iceskates" },
+        ];
         _this.UPGRADE_QUEUE = [];
         _this.SCROLL_NPC = find_npc(G.npcs.scrolls.id);
         _this.upgradeAttempts = 0;
@@ -1418,6 +1422,7 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         // 	}
         // }
         if (this.UPGRADE_QUEUE.length === 0) {
+            this.sellItems();
             if (!isStandOpen()) {
                 this.openStand();
             }
@@ -1433,6 +1438,23 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         }
         else {
             this.processUpgradeItems();
+        }
+    };
+    ZetchantMerchant.prototype.sellItems = function () {
+        var sellItems = [];
+        for (var i = 0; i < character.items.length; i++) {
+            var item = character.items[i];
+            if (!item)
+                continue;
+            for (var j = 0; j < this.SELL_LIST.length; j++) {
+                if (item.name === this.SELL_LIST[j].name)
+                    sellItems.push(i);
+            }
+        }
+        if (sellItems.length) {
+            utils_getLocationSystem().smartMove("town", "town").then(function () {
+                sellItems.forEach(function (idx) { return sell(idx); });
+            });
         }
     };
     // TODO this is kind of dupe code from bank items

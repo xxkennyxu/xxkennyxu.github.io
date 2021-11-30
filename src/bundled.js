@@ -245,6 +245,7 @@ function timeTillWorldBoss(worldBoss) {
 }
 function changeServer(region, id) {
     var minutesSinceLogin = sinceConvert(parent.loginDate, TimeIn.MINUTES);
+    getLoggingSystem().addLogMessage(region + "_" + id + "_" + minutesSinceLogin, "changeServer");
     // proxy characters should not invoke change_server
     if (!character.controller && minutesSinceLogin >= 1) {
         parent.loginDate = new Date();
@@ -560,7 +561,7 @@ var CharacterFunction = /** @class */ (function () {
         addGlobalFunctions();
         modifyUi();
         parent.loginDate = new Date(); // prevent spam change_server
-        AlDataClient.fetch();
+        setInterval(function () { return AlDataClient.fetch(); }, 5000);
     };
     CharacterFunction.prototype.hpPotUse = function () {
         if (is_on_cooldown("use_hp") || safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
@@ -1312,6 +1313,15 @@ var C_MERCHANT_STAND_LOCATION = {
 };
 var C_MERCHANT_SELL_ITEM_VALUE_MULT = 4;
 var C_MERCHANT_OPENED_BANKS = 4;
+// States: Stand -> Registering Stand -> Registered Stand -> Check Upgrades -> Fetch from bank -> Upgrade -> Bank everything
+//           ^																										v
+//           --------------------------																				|
+//                                    ^																				|
+// -> Fetch upgrade[n] from bank -> Upgrade ---																		|
+// |         ^                        v																				|
+// |         --------------------------																				|
+// |                                                                                                                |
+// ------------------------------------------------------------------------------------------------------------------
 var ZetchantMerchant = /** @class */ (function (_super) {
     zetchant_merchant_extends(ZetchantMerchant, _super);
     function ZetchantMerchant(skills) {

@@ -186,13 +186,13 @@ function isQBusy() {
 }
 function isWorldBossReady(bossName) {
     var parentWorldBoss = getParentWorldBoss(bossName);
-    var isSpawningSoonParent = msConvert(timeTillWorldBoss(parentWorldBoss), TimeIn.MINUTES) < 2;
+    var isSpawningSoonParent = msConvert(timeTillWorldBoss(parentWorldBoss), TimeIn.MINUTES) < 1.5;
     // prioritize current server
     if (parentWorldBoss && (parentWorldBoss.live || isSpawningSoonParent)) {
         return parentWorldBoss;
     }
     var alWorldBoss = getAlWorldBoss(bossName);
-    var isSpawningSoonAl = msConvert(timeTillWorldBoss(alWorldBoss), TimeIn.MINUTES) < 2;
+    var isSpawningSoonAl = msConvert(timeTillWorldBoss(alWorldBoss), TimeIn.MINUTES) < 1.5;
     if (alWorldBoss && (alWorldBoss.live || isSpawningSoonAl)) {
         return alWorldBoss;
     }
@@ -638,13 +638,6 @@ var Character = /** @class */ (function () {
             _this.systemFuncBeforeBusy();
             if (is_moving(character) || smart.moving || isQBusy())
                 return;
-            // TODO: hack
-            if (!character.s.holidayspirit) {
-                _this.locationSystem.smartMove("town", "xmas-buff").then(function () {
-                    parent.socket.emit("interaction", { type: "newyear_tree" });
-                });
-                return;
-            }
             try {
                 _this.characterFunction.tick();
             }
@@ -1329,15 +1322,6 @@ var C_MERCHANT_STAND_LOCATION = {
 };
 var C_MERCHANT_SELL_ITEM_VALUE_MULT = 4;
 var C_MERCHANT_OPENED_BANKS = 4;
-// States: Stand -> Registering Stand -> Registered Stand -> Check Upgrades -> Fetch from bank -> Upgrade -> Bank everything
-//           ^																										v
-//           --------------------------																				|
-//                                    ^																				|
-// -> Fetch upgrade[n] from bank -> Upgrade ---																		|
-// |         ^                        v																				|
-// |         --------------------------																				|
-// |                                                                                                                |
-// ------------------------------------------------------------------------------------------------------------------
 var ZetchantMerchant = /** @class */ (function (_super) {
     zetchant_merchant_extends(ZetchantMerchant, _super);
     function ZetchantMerchant(skills) {
@@ -2354,6 +2338,12 @@ var SoloLocation = /** @class */ (function (_super) {
             if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
                 this.forceNextLocation();
             }
+        }
+        else if (!character.s.holidayspirit) {
+            this.smartMove("town", "xmas-buff").then(function () {
+                parent.socket.emit("interaction", { type: "newyear_tree" });
+            });
+            return;
         }
         else {
             var sinceWb = getCombatSystem().getStateLastSetTime(CombatState.WB);

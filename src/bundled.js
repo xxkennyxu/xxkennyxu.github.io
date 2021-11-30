@@ -159,7 +159,7 @@ function fixAddLog() {
     parent.addLogFixed = true;
 }
 function modifyUi() {
-    if (parent.modifyUi) {
+    if (parent.modifyUi || character.controller) { // iframe characater
         return;
     }
     parent.modifyUi = true; // DO NOT MOVE AS IT CRASHES ON bottomPanel.insertBefore LINE
@@ -1875,6 +1875,60 @@ var NoOpCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
+;// CONCATENATED MODULE: ./src/lib/aldata/aldata.ts
+/**
+ *
+ * {
+        "id": 15,
+        "server_region": "US",
+        "server_identifier": "PVP",
+        "eventname": "franky",
+        "live": true,
+        "spawn": "2021-11-30T01:05:54.679Z",
+        "x": -364.275440208407,
+        "y": 159.0841708670722,
+        "map": "level2w",
+        "hp": 120000000,
+        "max_hp": 120000000,
+        "target": null,
+        "lastupdateval": "2021-11-30T00:45:30.503623",
+        "lastupdate": "2021-11-30T00:45:30.5036230Z",
+        "lasteupdatetick": 637738299305036300
+    },
+ */
+var AlData = /** @class */ (function () {
+    function AlData() {
+    }
+    return AlData;
+}());
+
+var AlDataClient = /** @class */ (function () {
+    function AlDataClient() {
+    }
+    AlDataClient.prototype.fetch = function () {
+        //create XMLHttpRequest object
+        var xhr = new XMLHttpRequest();
+        //open a get request with the remote server URL
+        xhr.open("GET", "https://aldata.info/api/ServerStatus");
+        //send the Http request
+        xhr.send();
+        //triggered when the response is completed
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                //parse JSON datax`x
+                var data = JSON.parse(xhr.responseText);
+                console.log(data.count);
+                console.log(data.products);
+            }
+            else if (xhr.status === 404) {
+                console.log("No records found");
+            }
+        };
+    };
+    return AlDataClient;
+}());
+
+
 ;// CONCATENATED MODULE: ./src/characters/zett-warrior.ts
 var zett_warrior_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -1897,6 +1951,7 @@ var zett_warrior_extends = (undefined && undefined.__extends) || (function () {
 
 
 
+
 var ZettWarrior = /** @class */ (function (_super) {
     zett_warrior_extends(ZettWarrior, _super);
     function ZettWarrior() {
@@ -1913,7 +1968,11 @@ var ZettWarrior = /** @class */ (function (_super) {
                 continue;
             start_character(partyMembers[i], "webpack");
         }
-        setTimeout(function () { return zUi(); }, 30000);
+        setTimeout(function () {
+            zUi();
+            var client = new AlDataClient();
+            client.fetch();
+        }, 30000);
         // for(const server of parent.X.servers) {
         // 	game_log(`Starting ws://${server.addr}:${server.port}`);
         // 	const socket: Socket = parent.io(`ws://${server.addr}:${server.port}`, {transports: ["websocket"], reconnection: true, autoConnect: true})
@@ -2134,7 +2193,7 @@ var SoloLocation = /** @class */ (function (_super) {
         }
         else if (parent.S["grinch"].live) {
             // TODO: grinch is special, remove after even is over
-            if (secSince(this.lastDestinationChangeAt) > 5) {
+            if (secSince(this.lastDestinationChangeAt) > 10) {
                 this.smartMove(parent.S["grinch"], "grinch");
                 this.lastDestinationChangeAt = new Date();
                 this.forceNextLocation();

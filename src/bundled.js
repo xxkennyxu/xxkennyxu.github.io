@@ -2,7 +2,129 @@
 /******/ 	"use strict";
 var __webpack_exports__ = {};
 
+;// CONCATENATED MODULE: ./src/lib/aldata/aldata.ts
+
+var AlDataClient = /** @class */ (function () {
+    function AlDataClient() {
+    }
+    // constructor() {
+    // 	AlDataClient.alData[Server.ASIA_1] = [];
+    // 	AlDataClient.alData[Server.US_1] = [];
+    // 	AlDataClient.alData[Server.US_2] = [];
+    // 	AlDataClient.alData[Server.US_3] = [];
+    // 	AlDataClient.alData[Server.US_PVP] = [];
+    // 	AlDataClient.alData[Server.EU_1] = [];
+    // 	AlDataClient.alData[Server.EU_2] = [];
+    // 	AlDataClient.alData[Server.EU_PVP] = [];
+    // }
+    AlDataClient.fetch = function () {
+        var cachedData = get("alData");
+        if (cachedData && cachedData.time && cachedData.data) {
+            // if data is less than 45 minutes old, re-use
+            var timePassedInMinutes = sinceConvert(new Date(cachedData.time), TimeIn.MINUTES);
+            if (timePassedInMinutes < 45) {
+                AlDataClient.alData = cachedData.data;
+                game_log("loading from cache, " + timePassedInMinutes + " minutes old");
+                return;
+            }
+        }
+        //create XMLHttpRequest object
+        var xhr = new XMLHttpRequest();
+        //triggered when the response is completed
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                //parse JSON datax`x
+                var data = JSON.parse(xhr.responseText);
+                var eventNames_1 = [];
+                data.forEach(function (alResponseData) {
+                    if (!AlDataClient.alData[alResponseData.eventname]) {
+                        AlDataClient.alData[alResponseData.eventname] = [];
+                        eventNames_1.push(alResponseData.eventname);
+                    }
+                    AlDataClient.alData[alResponseData.eventname].push(alResponseData);
+                    // let serverKey: Server;
+                    // if (alResponseData.server_identifier === "US") {
+                    // 	switch (alResponseData.server_region) {
+                    // 		case "I": serverKey = Server.US_1; break;
+                    // 		case "II": serverKey = Server.US_2; break;
+                    // 		case "III": serverKey = Server.US_3; break;
+                    // 		case "PVP": serverKey = Server.US_PVP; break;
+                    // 	}
+                    // } else if (alResponseData.server_identifier === "EU") {
+                    // 	switch (alResponseData.server_region) {
+                    // 		case "I": serverKey = Server.EU_1; break;
+                    // 		case "II": serverKey = Server.EU_2; break;
+                    // 		case "PVP": serverKey = Server.EU_PVP; break;
+                    // 	}
+                    // } else if (alResponseData.server_identifier === "ASIA") {
+                    // 	switch (alResponseData.server_region) {
+                    // 		case "I": serverKey = Server.ASIA_1; break;
+                    // 	}
+                    // }
+                    // if (!serverKey) {
+                    // 	console.error(`don't recognize ${alResponseData.server_identifier}_${alResponseData.server_region}`);
+                    // } else {
+                    // 	AlDataClient.alData[serverKey].push(alResponseData);
+                    // }
+                });
+                eventNames_1.forEach(function (name) { return AlDataClient.alData[name].sort(function (a, b) {
+                    if (a.live && b.live)
+                        return 0;
+                    if (a.live && !b.live)
+                        return -1;
+                    if (!a.live && b.live)
+                        return 1;
+                    var aDate = new Date(a.spawn);
+                    var bDate = new Date(b.spawn);
+                    return aDate.getTime() - bDate.getTime();
+                }); });
+                // CACHING
+                var alCache = {};
+                alCache["data"] = AlDataClient.alData;
+                alCache["time"] = new Date();
+                set("alData", alCache);
+            }
+            else if (xhr.status === 404) {
+                console.log("No records found");
+            }
+        };
+        //open a get request with the remote server URL
+        xhr.open("GET", "https://aldata.info/api/ServerStatus");
+        //send the Http request
+        xhr.send();
+    };
+    AlDataClient.shiftExpired = function () {
+        var parentWorldBosses = getWorldBosses();
+        for (var _i = 0, _a = Object.entries(AlDataClient.alData); _i < _a.length; _i++) {
+            var _b = _a[_i], key = _b[0], alDataList = _b[1];
+            if (alDataList.length) {
+                var parentBoss = parentWorldBosses[key];
+                var boss = WorldBoss.create(alDataList[0]);
+                if (timeTillWorldBoss(boss) < 0
+                    && parentBoss.serverIdentifier === boss.serverIdentifier && parentBoss.serverRegion === boss.serverRegion
+                    && !parentBoss.live) {
+                    console.log(parentBoss);
+                    game_log("Pruning [" + boss.serverRegion + "_" + boss.serverIdentifier + "] " + boss.name);
+                    alDataList.shift();
+                    this.updateCache();
+                }
+            }
+        }
+    };
+    AlDataClient.updateCache = function () {
+        var alCache = {};
+        alCache["time"] = get("alData").time;
+        alCache["data"] = AlDataClient.alData;
+        set("alData", alCache);
+        game_log("updated cache!");
+    };
+    AlDataClient.alData = {};
+    return AlDataClient;
+}());
+
+
 ;// CONCATENATED MODULE: ./src/lib/utils.ts
+
 var GLOBAL_FUNCTIONS = [z, zUi, zStart, zStop, zStopAll, zGiveaway];
 function getPartySystem() {
     return parent.partySystem;
@@ -58,14 +180,32 @@ function isQBusy() {
     return Object.keys(character.q).length != 0;
 }
 function isWorldBossReady(bossName) {
+    var parentWorldBoss = getParentWorldBoss(bossName);
+    var isSpawningSoonParent = msConvert(timeTillWorldBoss(parentWorldBoss), TimeIn.MINUTES) < 1;
+    // prioritize current server
+    if (parentWorldBoss.live || isSpawningSoonParent) {
+        return parentWorldBoss;
+    }
+    var alWorldBoss = getAlWorldBoss(bossName);
+    var isSpawningSoonAl = msConvert(timeTillWorldBoss(alWorldBoss), TimeIn.MINUTES) < 1;
+    if (alWorldBoss.live || isSpawningSoonAl) {
+        return alWorldBoss;
+    }
+    return null;
+}
+function getParentWorldBoss(bossName) {
     var worldBosses = getWorldBosses();
     if (!worldBosses[bossName])
         return null;
-    var worldBoss = worldBosses[bossName];
-    var isAlive = worldBoss.live;
-    var isSpawningSoon = msConvert(timeTillWorldBoss(bossName), TimeIn.MINUTES) < 1;
-    var hasEnoughHpLeft = worldBoss.hp / worldBoss.maxHp > .1;
-    return (isAlive && hasEnoughHpLeft) || isSpawningSoon ? worldBoss : null;
+    return worldBosses[bossName];
+}
+function getAlWorldBoss(bossName) {
+    if (AlDataClient.alData[bossName] && AlDataClient.alData[bossName].length) {
+        var alWorldBossData = AlDataClient.alData[bossName][0];
+        // AlDataClient.alData[bossName].forEach(adata => console.log(`${adata.eventname} (${adata.live}) ${adata.spawn}`));
+        return WorldBoss.create(alWorldBossData);
+    }
+    return null;
 }
 function createDivWithColor(text, color, size) {
     return "<div style=\"" + (size ? "font-size:" + size + "px;" : "") + " color:" + color + "; display: inline; padding-bottom: 1px; padding-top: 1px;\">" + text + "</div>";
@@ -92,39 +232,52 @@ function msConvert(ms, timeIn) {
 function sinceConvert(date, timeIn) {
     return msConvert(mssince(date), timeIn);
 }
-function timeTillWorldBoss(bossName) {
-    var worldBosses = getWorldBosses();
-    if (!worldBosses[bossName] || !worldBosses[bossName].spawn)
+function timeTillWorldBoss(worldBoss) {
+    if (!worldBoss || !worldBoss.spawn)
         return -1;
-    var bossSpawnTime = new Date(worldBosses[bossName].spawn);
+    var bossSpawnTime = new Date(worldBoss.spawn);
     var currentTime = new Date();
     var timeRemaining = bossSpawnTime.getTime() - currentTime.getTime();
+    // TODO: Hack
+    var eventNameDiv = createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
+    getLoggingSystem().addLogMessage(eventNameDiv, worldBoss.name);
     return timeRemaining;
 }
-function changeServer(server) {
+function changeServer(region, id) {
+    var minutesSinceLogin = sinceConvert(parent.loginDate, TimeIn.MINUTES);
+    // proxy characters should not invoke change_server
+    if (!character.controller && minutesSinceLogin >= 1) {
+        parent.loginDate = new Date();
+        change_server(region, id);
+    }
+    else {
+        debugLog("--> " + region + "_" + id + " - " + minutesSinceLogin + "m ago...", "loggedin_ago");
+    }
+}
+function changeServers(server) {
     switch (server) {
-        case Server.ASIA_1:
+        case ServerEnum.ASIA_1:
             change_server("ASIA", "I");
             break;
-        case Server.EU_1:
+        case ServerEnum.EU_1:
             change_server("EU", "I");
             break;
-        case Server.EU_2:
+        case ServerEnum.EU_2:
             change_server("EU", "II");
             break;
-        case Server.EU_PVP:
+        case ServerEnum.EU_PVP:
             change_server("EU", "PVP");
             break;
-        case Server.US_1:
+        case ServerEnum.US_1:
             change_server("US", "I");
             break;
-        case Server.US_2:
+        case ServerEnum.US_2:
             change_server("US", "II");
             break;
-        case Server.US_3:
+        case ServerEnum.US_3:
             change_server("US", "III");
             break;
-        case Server.US_PVP:
+        case ServerEnum.US_PVP:
             change_server("US", "PVP");
             break;
         default: game_log("Server " + server + " is not recognized");
@@ -134,7 +287,7 @@ function getWorldBosses() {
     var worldbosses = {};
     for (var bossName in parent.S) {
         var bossDetails = parent.S[bossName];
-        worldbosses[bossName] = new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp, bossDetails.target, bossDetails.spawn);
+        worldbosses[bossName] = new WorldBoss(bossName, bossDetails.x, bossDetails.y, bossDetails.live, bossDetails.map, bossDetails.hp, bossDetails.max_hp, bossDetails.target, bossDetails.spawn, server.region, server.id);
     }
     return worldbosses;
 }
@@ -261,7 +414,7 @@ function zUi() {
         var iframe = iframes[i];
         if (!iframe.contentDocument)
             continue;
-        iframe.style.height = "120px";
+        iframe.style.height = "200px";
         iframe.contentDocument.body.style.marginTop = "1px";
         iframe.contentDocument.body.style.marginLeft = "";
         iframe.contentDocument.body.style.marginRight = "";
@@ -288,17 +441,17 @@ function zGiveaway() {
         }
     }
 }
-var Server;
-(function (Server) {
-    Server[Server["ASIA_1"] = 0] = "ASIA_1";
-    Server[Server["EU_1"] = 1] = "EU_1";
-    Server[Server["EU_2"] = 2] = "EU_2";
-    Server[Server["EU_PVP"] = 3] = "EU_PVP";
-    Server[Server["US_1"] = 4] = "US_1";
-    Server[Server["US_2"] = 5] = "US_2";
-    Server[Server["US_3"] = 6] = "US_3";
-    Server[Server["US_PVP"] = 7] = "US_PVP";
-})(Server || (Server = {}));
+var ServerEnum;
+(function (ServerEnum) {
+    ServerEnum[ServerEnum["ASIA_1"] = 0] = "ASIA_1";
+    ServerEnum[ServerEnum["EU_1"] = 1] = "EU_1";
+    ServerEnum[ServerEnum["EU_2"] = 2] = "EU_2";
+    ServerEnum[ServerEnum["EU_PVP"] = 3] = "EU_PVP";
+    ServerEnum[ServerEnum["US_1"] = 4] = "US_1";
+    ServerEnum[ServerEnum["US_2"] = 5] = "US_2";
+    ServerEnum[ServerEnum["US_3"] = 6] = "US_3";
+    ServerEnum[ServerEnum["US_PVP"] = 7] = "US_PVP";
+})(ServerEnum || (ServerEnum = {}));
 var UpgradeItem = /** @class */ (function () {
     function UpgradeItem(name, maxRefine, upgradeType, autoBuy) {
         if (upgradeType === void 0) { upgradeType = UpgradeType.UPGRADE; }
@@ -358,7 +511,7 @@ var FindItemParameters = /** @class */ (function () {
 }
  */
 var WorldBoss = /** @class */ (function () {
-    function WorldBoss(name, x, y, live, map, hp, maxHp, target, spawn) {
+    function WorldBoss(name, x, y, live, map, hp, maxHp, target, spawn, serverRegion, serverIdentifier) {
         this.name = name;
         this.x = x;
         this.y = y;
@@ -368,7 +521,12 @@ var WorldBoss = /** @class */ (function () {
         this.maxHp = maxHp;
         this.target = target;
         this.spawn = spawn;
+        this.serverRegion = serverRegion;
+        this.serverIdentifier = serverIdentifier;
     }
+    WorldBoss.create = function (alWorldBossData) {
+        return new WorldBoss(alWorldBossData.eventname, alWorldBossData.x, alWorldBossData.y, alWorldBossData.live, alWorldBossData.map, alWorldBossData.hp, alWorldBossData.max_hp, alWorldBossData.target, alWorldBossData.spawn, alWorldBossData.server_region, alWorldBossData.server_identifier);
+    };
     return WorldBoss;
 }());
 
@@ -378,6 +536,7 @@ var WorldBoss = /** @class */ (function () {
 // http://adventure.land/docs/code/character/events
 
 ;// CONCATENATED MODULE: ./src/characters/character.ts
+
 
 var CharacterFunction = /** @class */ (function () {
     function CharacterFunction(skills, usePercent) {
@@ -395,13 +554,13 @@ var CharacterFunction = /** @class */ (function () {
         this.mpPotUse();
         loot();
     };
-    CharacterFunction.prototype.afterSystem = function () {
-        //loot();
-    };
+    CharacterFunction.prototype.afterSystem = function () { };
     CharacterFunction.prototype.setup = function () {
         fixAddLog();
         addGlobalFunctions();
         modifyUi();
+        parent.loginDate = new Date(); // prevent spam change_server
+        AlDataClient.fetch();
     };
     CharacterFunction.prototype.hpPotUse = function () {
         if (is_on_cooldown("use_hp") || safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
@@ -1692,13 +1851,15 @@ var CombatSystem = /** @class */ (function (_super) {
         var freeBeatableTarget = this.getFreeTarget(CombatDifficulty.MEDIUM);
         // find the party leader's target
         var partyLeaderTarget = getPartySystem().getPartyLeaderTarget();
-        if (monsterTargetingMe) {
-            target = monsterTargetingMe;
-            this.currentState = CombatState.ATK_ME;
-        }
-        else if (worldBossTarget) {
+        // always world boss first, otherwise it'll create edge cases where hostile monsters attack me
+        // and i switch target which will switch servers on me
+        if (worldBossTarget) {
             target = worldBossTarget;
             this.currentState = CombatState.WB;
+        }
+        else if (monsterTargetingMe) {
+            target = monsterTargetingMe;
+            this.currentState = CombatState.ATK_ME;
         }
         else if (bossTarget) {
             target = bossTarget;
@@ -1797,13 +1958,9 @@ var CombatSystem = /** @class */ (function (_super) {
         else if (percentHpRemaining > .5) {
             return CombatDifficulty.MEDIUM;
         }
-        else if (percentHpRemaining > .3) {
+        else if (percentHpRemaining > .2) {
             debugLog("HARD: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ".\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
             return CombatDifficulty.HARD;
-        }
-        else if (percentHpRemaining <= 0) {
-            debugLog("DEATH: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ") is too difficult.\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
-            return CombatDifficulty.DEATH;
         }
         return CombatDifficulty.DEATH;
     };
@@ -1877,59 +2034,6 @@ var NoOpCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
-;// CONCATENATED MODULE: ./src/lib/aldata/aldata.ts
-/**
- *
- * {
-        "id": 15,
-        "server_region": "US",
-        "server_identifier": "PVP",
-        "eventname": "franky",
-        "live": true,
-        "spawn": "2021-11-30T01:05:54.679Z",
-        "x": -364.275440208407,
-        "y": 159.0841708670722,
-        "map": "level2w",
-        "hp": 120000000,
-        "max_hp": 120000000,
-        "target": null,
-        "lastupdateval": "2021-11-30T00:45:30.503623",
-        "lastupdate": "2021-11-30T00:45:30.5036230Z",
-        "lasteupdatetick": 637738299305036300
-    },
- */
-var AlData = /** @class */ (function () {
-    function AlData() {
-    }
-    return AlData;
-}());
-
-var AlDataClient = /** @class */ (function () {
-    function AlDataClient() {
-    }
-    AlDataClient.prototype.fetch = function () {
-        //create XMLHttpRequest object
-        var xhr = new XMLHttpRequest();
-        //triggered when the response is completed
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                //parse JSON datax`x
-                var data = JSON.parse(xhr.responseText);
-                console.log(data);
-            }
-            else if (xhr.status === 404) {
-                console.log("No records found");
-            }
-        };
-        //open a get request with the remote server URL
-        xhr.open("GET", "https://aldata.info/api/ServerStatus");
-        //send the Http request
-        xhr.send();
-    };
-    return AlDataClient;
-}());
-
-
 ;// CONCATENATED MODULE: ./src/characters/zett-warrior.ts
 var zett_warrior_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -1969,14 +2073,14 @@ var ZettWarrior = /** @class */ (function (_super) {
                 continue;
             start_character(partyMembers[i], "webpack");
         }
+        // TODO: this should be fleshed out or moved to web sockets
+        setInterval(function () { return AlDataClient.shiftExpired(); }, 5000); // DONT PRUNE TOO FAST OTHERWISE RACE CONDITION
         setTimeout(function () {
             zUi();
-            var client = new AlDataClient();
-            client.fetch();
         }, 30000);
         // for(const server of parent.X.servers) {
         // 	game_log(`Starting ws://${server.addr}:${server.port}`);
-        // 	const socket: Socket = parent.io(`ws://${server.addr}:${server.port}`, {transports: ["websocket"], reconnection: true, autoConnect: true})
+        // 	const socket = parent.io(`//${server.addr}:${server.port}`, {transports: ["websocket"], reconnection: true, autoConnect: true})
         // 	socket.on("server_info", (data: any) => {
         // 		// Creates a listener for `server_data` (this is what feeds info in to parent.S)
         // 		if(data && Object.keys(data).length > 0) {
@@ -2141,7 +2245,7 @@ var NoOpLocation = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     NoOpLocation.prototype.getLogIcon = function () {
-        return;
+        return createDivWithColor("&#128099;", "purple", 10);
     };
     NoOpLocation.prototype.tick = function () {
         return;
@@ -2170,6 +2274,7 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
+
 var worldBossCheck = ["snowman"];
 var worldBossSmartMoveLocation = {
     "snowman": SNOWMAN
@@ -2186,6 +2291,7 @@ var SoloLocation = /** @class */ (function (_super) {
         return _this;
     }
     SoloLocation.prototype.tick = function () {
+        var grinch = AlDataClient.alData.grinch && AlDataClient.alData.grinch.length ? AlDataClient.alData.grinch[0] : null;
         // checking HP here to make sure we're engaged and not short circuiting due to target being dropped
         if (getCombatSystem().currentState === CombatState.WB || getCombatSystem().currentState === CombatState.B) {
             if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
@@ -2200,7 +2306,14 @@ var SoloLocation = /** @class */ (function (_super) {
                 this.forceNextLocation();
             }
         }
+        else if (grinch && grinch.live) {
+            changeServer(grinch.server_region, grinch.server_identifier);
+        }
         else {
+            // TODO: grinch code
+            if (grinch) {
+                timeTillWorldBoss(WorldBoss.create(grinch));
+            }
             this.moveToNextLocation();
         }
     };
@@ -2210,6 +2323,7 @@ var SoloLocation = /** @class */ (function (_super) {
     SoloLocation.prototype.moveToNextLocation = function () {
         var nextLocation;
         var nextLocationName = "???";
+        var bossSpawningSoon = false;
         // always goes to bosses in order
         for (var boss in worldBossCheck) {
             var worldBossName = worldBossCheck[boss];
@@ -2217,10 +2331,20 @@ var SoloLocation = /** @class */ (function (_super) {
             if (!worldBossSmartMoveLocation[worldBossName])
                 debugLog("No SmartLocation found for " + worldBossName);
             if (worldBoss) {
+                // TODO: make this prettier?
+                if (worldBoss.serverIdentifier != server.id || worldBoss.serverRegion != server.region) {
+                    changeServer(worldBoss.serverRegion, worldBoss.serverIdentifier);
+                    return;
+                }
                 nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
                 nextLocationName = worldBossName;
                 this.forceNextLocation();
+                bossSpawningSoon = true;
             }
+        }
+        // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
+        if (!bossSpawningSoon && "PVP" != server.id || "US" != server.region) {
+            changeServer("US", "PVP");
         }
         if (!nextLocation) {
             if (typeof this.mobDestination === "string") {

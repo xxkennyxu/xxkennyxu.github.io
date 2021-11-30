@@ -24,7 +24,8 @@ var AlDataClient = /** @class */ (function () {
             var timePassedInMinutes = sinceConvert(new Date(cachedData.time), TimeIn.MINUTES);
             if (timePassedInMinutes < 45) {
                 AlDataClient.alData = cachedData.data;
-                game_log("loading from cache, " + timePassedInMinutes + " minutes old");
+                if (character.name === "Zett")
+                    game_log("loading from cache, " + timePassedInMinutes + " minutes old");
                 return;
             }
             else {
@@ -103,7 +104,8 @@ var AlDataClient = /** @class */ (function () {
             if (alDataList.length) {
                 var parentBoss = parentWorldBosses[key];
                 var boss = WorldBoss.create(alDataList[0]);
-                if (timeTillWorldBoss(boss) < 0
+                if (parentBoss
+                    && timeTillWorldBoss(boss) < 0
                     && parentBoss.serverIdentifier === boss.serverIdentifier && parentBoss.serverRegion === boss.serverRegion
                     && !parentBoss.live) {
                     console.log(parentBoss);

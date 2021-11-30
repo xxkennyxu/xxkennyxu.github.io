@@ -1832,9 +1832,10 @@ var LoggingSystem = /** @class */ (function (_super) {
         var inventoryLogging = "\n" + getInventorySystem().getLogIcon() + (C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize);
         // Combat Logging
         var currentTarget = getCombatSystem().currentTarget;
-        var combatLogging = "\n" + getCombatSystem().getLogIcon() + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + this.getLogIcon() + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
+        var combatLogIcon = getCombatSystem().getLogIcon();
+        var combatLogging = "\n" + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
         // Movement Logging
-        var movementLogging = smart.moving ? "\n" + this.getLogIcon() + " " + utils_getLocationSystem().destinationName : "";
+        var movementLogging = smart.moving ? "\n" + utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName : "";
         // Location Logging
         var locSystem = utils_getLocationSystem();
         var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);

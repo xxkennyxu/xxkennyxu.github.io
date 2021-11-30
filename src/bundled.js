@@ -1268,26 +1268,24 @@ var LoggingSystem = /** @class */ (function (_super) {
         var display_msg = hpDiv + "/" + mpDiv + " | " + lvlDiv;
         for (var k in this.messageQueue) {
             display_msg += "<br>";
-            display_msg += this.messageQueue[k];
+            display_msg += this.messageQueue[k].message;
         }
         if (display_msg === "")
             return;
         set_message(display_msg);
-        var has_moving = smart.moving;
-        // && this.messageQueue[C_MESSAGE_TYPE_WALKING] 
-        // ? this.messageQueue[C_MESSAGE_TYPE_WALKING]
-        // : null;
-        // this.messageQueue = {};
-        if (!has_moving) {
-            delete this.messageQueue[C_MESSAGE_TYPE_WALKING];
+        for (var k in this.messageQueue) {
+            if (mssince(this.messageQueue[k].date) > this.messageQueue[k].ttl) {
+                delete this.messageQueue[k];
+            }
         }
     };
-    LoggingSystem.prototype.addLogMessage = function (message, msg_type) {
+    LoggingSystem.prototype.addLogMessage = function (message, msg_type, ttlMs) {
+        if (ttlMs === void 0) { ttlMs = 1000; }
         if (!msg_type) {
             log(message);
             return;
         }
-        this.messageQueue[msg_type] = message;
+        this.messageQueue[msg_type] = { message: message, date: new Date(), ttl: ttlMs };
     };
     return LoggingSystem;
 }(System));

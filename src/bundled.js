@@ -254,6 +254,7 @@ function changeServer(region, id) {
     // proxy characters should not invoke change_server
     if (!character.controller && minutesSinceLogin >= 1) {
         parent.loginDate = new Date();
+        parent.changingServers = true;
         change_server(region, id);
     }
     else {
@@ -560,7 +561,6 @@ var CharacterFunction = /** @class */ (function () {
         this.mpPotUse();
         loot();
     };
-    CharacterFunction.prototype.afterSystem = function () { };
     CharacterFunction.prototype.setup = function () {
         fixAddLog();
         addGlobalFunctions();
@@ -602,7 +602,7 @@ var Character = /** @class */ (function () {
         this.loggingSystem = loggingSystem;
         this.partySystem = partySystem;
         this.started = false;
-        this.systems = [locationSystem, combatSystem, partySystem, inventorySystem];
+        this.systems = [loggingSystem, locationSystem, combatSystem, partySystem, inventorySystem];
     }
     Character.prototype.start = function (ms) {
         var _this = this;
@@ -621,15 +621,12 @@ var Character = /** @class */ (function () {
         parent.loggingSystem = this.loggingSystem;
         this.characterFunction.setup();
         setInterval(function () {
-            try {
-                _this.loggingSystem.tick();
-            }
-            catch (exception) {
-                logException(_this.loggingSystem.getName(), exception);
-            }
             if (character.rip) {
                 respawn();
                 parent.currentLocation = "?";
+                return;
+            }
+            if (parent.changingServers) {
                 return;
             }
             try {
@@ -638,6 +635,7 @@ var Character = /** @class */ (function () {
             catch (exception) {
                 logException("charFunc->beforeBusy", exception);
             }
+            _this.systemFuncBeforeBusy();
             if (is_moving(character) || smart.moving || isQBusy())
                 return;
             // TODO: hack
@@ -653,16 +651,15 @@ var Character = /** @class */ (function () {
             catch (exception) {
                 logException("charFunc->tick", exception);
             }
-            _this.systemFunc();
-            try {
-                _this.characterFunction.afterSystem();
-            }
-            catch (exception) {
-                logException("charFunc->afterSystem", exception);
-            }
+            _this.systemFuncTick();
         }, ms);
     };
-    Character.prototype.systemFunc = function () {
+    Character.prototype.systemFuncBeforeBusy = function () {
+        this.systems.forEach(function (system) {
+            system.beforeBusy();
+        });
+    };
+    Character.prototype.systemFuncTick = function () {
         this.systems.forEach(function (system) {
             system.tick();
         });
@@ -1049,8 +1046,10 @@ function bringPotionReply(name, data) {
 }
 
 ;// CONCATENATED MODULE: ./src/systems/system.ts
+
 var System = /** @class */ (function () {
     function System() {
+        this._stateLastSetTime = {};
     }
     Object.defineProperty(System.prototype, "previousState", {
         get: function () {
@@ -1080,6 +1079,7 @@ var System = /** @class */ (function () {
             this._previousStateSetDurationMs = this._currentStateSetTime ? mssince(this._currentStateSetTime) : 0;
             this._currentState = newState;
             this._currentStateSetTime = new Date();
+            this._stateLastSetTime[newState.toString()] = this._currentStateSetTime;
         },
         enumerable: false,
         configurable: true
@@ -1091,6 +1091,16 @@ var System = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
+    System.prototype.getStateLastSetTime = function (state, timeIn) {
+        if (timeIn === void 0) { timeIn = TimeIn.SECONDS; }
+        var lastSetTime = this._stateLastSetTime[state.toString()];
+        if (!lastSetTime) {
+            this._stateLastSetTime[state.toString()] = pastDatePlusMins(60);
+        }
+        return sinceConvert(this._stateLastSetTime[state.toString()], timeIn);
+    };
+    System.prototype.beforeBusy = function () { };
+    System.prototype.tick = function () { };
     return System;
 }());
 
@@ -1252,11 +1262,12 @@ var LoggingSystem = /** @class */ (function (_super) {
     LoggingSystem.prototype.getLogIcon = function () {
         throw new Error("Method not implemented.");
     };
-    LoggingSystem.prototype.tick = function () {
+    LoggingSystem.prototype.beforeBusy = function () {
         if (!canCall("displayLogMessages", this.getName(), 1000))
             return;
         this.displayLogMessages();
     };
+    LoggingSystem.prototype.tick = function () { };
     LoggingSystem.prototype.displayLogMessages = function () {
         var hpDiv = createDivWithColor(Math.trunc(getHpPercent() * 100) + "%", "indianred");
         var mpDiv = createDivWithColor(Math.trunc(getMpPercent() * 100) + "%", "lightblue");
@@ -2089,7 +2100,7 @@ var ZettWarrior = /** @class */ (function (_super) {
             start_character(partyMembers[i], "webpack");
         }
         // TODO: this should be fleshed out or moved to web sockets
-        setInterval(function () { return AlDataClient.shiftExpired(); }, 5000); // DONT PRUNE TOO FAST OTHERWISE RACE CONDITION
+        setInterval(function () { return AlDataClient.shiftExpired(); }, 10000); // DONT PRUNE TOO FAST OTHERWISE RACE CONDITION
         setTimeout(function () {
             zUi();
         }, 30000);
@@ -2141,8 +2152,8 @@ var ZettWarrior = /** @class */ (function (_super) {
 }(CharacterFunction));
 
 
-;// CONCATENATED MODULE: ./src/systems/combat/meleeCombat.ts
-var meleeCombat_extends = (undefined && undefined.__extends) || (function () {
+;// CONCATENATED MODULE: ./src/systems/combat/soloCombat.ts
+var soloCombat_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -2159,16 +2170,16 @@ var meleeCombat_extends = (undefined && undefined.__extends) || (function () {
 })();
 
 var SoloCombat = /** @class */ (function (_super) {
-    meleeCombat_extends(SoloCombat, _super);
+    soloCombat_extends(SoloCombat, _super);
     function SoloCombat() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     SoloCombat.prototype.tick = function () {
-        var target = this.findTarget();
-        if (!target)
+        var attackTarget = this.findTarget();
+        if (!attackTarget)
             return;
-        change_target(target);
-        this.attack(target);
+        change_target(attackTarget);
+        this.attack(attackTarget);
     };
     return SoloCombat;
 }(CombatSystem));
@@ -2259,12 +2270,6 @@ var NoOpLocation = /** @class */ (function (_super) {
     function NoOpLocation() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    NoOpLocation.prototype.getLogIcon = function () {
-        return createDivWithColor("&#128099;", "purple", 10);
-    };
-    NoOpLocation.prototype.tick = function () {
-        return;
-    };
     return NoOpLocation;
 }(LocationSystem));
 
@@ -2305,31 +2310,38 @@ var SoloLocation = /** @class */ (function (_super) {
         parent.currentLocation = "?";
         return _this;
     }
-    SoloLocation.prototype.tick = function () {
+    SoloLocation.prototype.beforeBusy = function () {
         var grinch = AlDataClient.alData.grinch && AlDataClient.alData.grinch.length ? AlDataClient.alData.grinch[0] : null;
-        // checking HP here to make sure we're engaged and not short circuiting due to target being dropped
-        if (getCombatSystem().currentState === CombatState.WB || getCombatSystem().currentState === CombatState.B) {
-            if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
-                this.forceNextLocation();
-            }
+        if (grinch) {
+            timeTillWorldBoss(WorldBoss.create(grinch));
         }
-        else if (parent.S["grinch"].live) {
+        if (parent.S["grinch"].live) {
             // TODO: grinch is special, remove after even is over
-            if (secSince(this.lastDestinationChangeAt) > 10) {
+            if (secSince(this.lastDestinationChangeAt) > 10 && getCombatSystem().currentState != CombatState.WB) {
                 this.smartMove(parent.S["grinch"], "grinch");
                 this.lastDestinationChangeAt = new Date();
-                this.forceNextLocation();
             }
         }
         else if (grinch && grinch.live) {
             changeServer(grinch.server_region, grinch.server_identifier);
         }
-        else {
-            // TODO: grinch code
-            if (grinch) {
-                timeTillWorldBoss(WorldBoss.create(grinch));
+    };
+    SoloLocation.prototype.tick = function () {
+        // Engaged in boss/worldboss, do not move
+        if (getCombatSystem().currentState === CombatState.WB || getCombatSystem().currentState === CombatState.B) {
+            if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
+                this.forceNextLocation();
             }
-            this.moveToNextLocation();
+        }
+        else {
+            var sinceWb = getCombatSystem().getStateLastSetTime(CombatState.WB);
+            var sinceB = getCombatSystem().getStateLastSetTime(CombatState.B);
+            if (sinceWb > 30 && sinceB > 30) {
+                this.moveToNextLocation();
+            }
+            else {
+                debugLog("sinceWb: " + sinceWb + " | sinceB: " + sinceB, "location_debug!");
+            }
         }
     };
     SoloLocation.prototype.forceNextLocation = function () {
@@ -2443,7 +2455,7 @@ var PartySystem = /** @class */ (function (_super) {
     PartySystem.prototype.getName = function () {
         return "PartySystem";
     };
-    PartySystem.prototype.tick = function () {
+    PartySystem.prototype.beforeBusy = function () {
         if (character.name === this.partyLeader)
             return;
         if (!parent.party[this.partyLeader] && canCall("sendPartyRequest", this.getName(), 5000)) {
@@ -2666,10 +2678,13 @@ var UseMerchant = /** @class */ (function (_super) {
     function UseMerchant() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
+    UseMerchant.prototype.beforeBusy = function () {
+        _super.prototype.beforeBusy.call(this);
+        this.transferItemsToMerchant();
+    };
     UseMerchant.prototype.tick = function () {
         this.hpPotQty = character.items[locate_item(this.hpPotName)].q;
         this.mpPotQty = character.items[locate_item(this.mpPotName)].q;
-        this.transferItemsToMerchant();
         this.restockPotionsAt(this.hpPotName, true);
         this.restockPotionsAt(this.mpPotName, true);
     };

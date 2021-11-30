@@ -2523,7 +2523,7 @@ var PartySystem = /** @class */ (function (_super) {
     PartySystem.prototype.assembleCombatMembers = function () {
         this.combatPartyMembers.forEach(function (name) {
             if (character.name != name) {
-                if (!parent.entities[name] || distance(character, parent.entities[name]) > 200) {
+                if (parent.entities[name] && distance(character, parent.entities[name]) > 200) {
                     sendComeToMeCommand(name, null, false);
                 }
             }

@@ -2046,7 +2046,7 @@ var CombatSystem = /** @class */ (function (_super) {
         var _this = this;
         if (target === void 0) { target = character; }
         var entities = getEntities(function (current) {
-            return current.type === "monster" && !_this.isBoss(current) && current.target === target.name;
+            return current.type === "monster" && !_this.isBoss(current) && current.target === target.name && distance(character, current) < 200;
         });
         return entities.length ? entities[0] : null;
     };

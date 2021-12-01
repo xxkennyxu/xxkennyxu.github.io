@@ -1818,6 +1818,7 @@ var LoggingSystem = /** @class */ (function (_super) {
                     continue;
                 inventoryLogging += maybeItem.name;
                 this._itemsShownCount++;
+                break;
             }
             if (this._itemsShownCount >= inventorySize) {
                 this._itemsShownCount = 0;
@@ -1830,12 +1831,15 @@ var LoggingSystem = /** @class */ (function (_super) {
         // Movement Logging
         var movementLogging = !this._logMovement || !smart.moving ? "" : NL + (utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName);
         // Location Logging
-        var locSystem = utils_getLocationSystem();
-        var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
-        var locationLogging = "" + parent.currentLocation;
-        if (parent.currentLocation != locSystem.nextLocationName)
-            locationLogging += "->" + locSystem.nextLocationName;
-        locationLogging = !this._logLocation ? "" : "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
+        var locationLogging = "";
+        if (this._logLocation) {
+            var locSystem = utils_getLocationSystem();
+            var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
+            locationLogging = "" + parent.currentLocation;
+            if (parent.currentLocation != locSystem.nextLocationName)
+                locationLogging += "->" + locSystem.nextLocationName;
+            locationLogging = !this._logLocation ? "" : "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
+        }
         // World Boss Logging
         var wbLogging = "";
         if (this._logWorldBosses) {

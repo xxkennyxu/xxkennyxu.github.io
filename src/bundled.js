@@ -2471,6 +2471,11 @@ var ZettWarrior = /** @class */ (function (_super) {
         // 	});
         // }
     };
+    ZettWarrior.prototype.beforeBusy = function () {
+        if (smart.moving) {
+            useSkill(this.getSkills().charge);
+        }
+    };
     ZettWarrior.prototype.tick = function () {
         // Party Logic
         this.tauntTargetedPartyMember(function (tar) {
@@ -2480,7 +2485,6 @@ var ZettWarrior = /** @class */ (function (_super) {
                 && (getPartySystem().partyMembers.includes(tar.target));
         });
         getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.real_x === member.real_x && character.real_y === member.real_y; }, function () { return move(character.x + 5, character.y + 5); });
-        useSkill(this.getSkills().charge);
         if (!character.s.mluck)
             sendBuffRequest(InventorySystem.merchantName, "mluck");
     };

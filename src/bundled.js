@@ -2656,7 +2656,7 @@ var Cleaning = /** @class */ (function () {
         for (var i = 0; i < this._cleanQueue.length; i++) {
             bank_store(this._cleanQueue[i].idx);
         }
-        this._cleanQueue;
+        this._cleanQueue = [];
     };
     Cleaning.prototype.sortBankItems = function () {
         // TODO:
@@ -2670,20 +2670,20 @@ var Cleaning = /** @class */ (function () {
                     return "continue";
                 if (C_DO_NOT_STORE_ITEM.find(function (element) { var _a; return (_a = item.name) === null || _a === void 0 ? void 0 : _a.includes(element); }))
                     return "continue";
+                var bankItem = true;
                 for (var i_1 in MerchantConfig.UPGRADE_LIST) {
                     var upgradeItem = MerchantConfig.UPGRADE_LIST[i_1];
                     if (upgradeItem.name === item.name) {
-                        break;
+                        bankItem = false;
                     }
                 }
                 for (var i_2 in MerchantConfig.VEND_LIST) {
                     var v_item = MerchantConfig.VEND_LIST[i_2];
                     if (v_item.name === item.name) {
-                        break;
+                        bankItem = false;
                     }
                 }
                 // if clean queue has the item, skip
-                var bankItem = true;
                 for (var j = 0; j < _this._cleanQueue.length; j++) {
                     if (_this._cleanQueue[j].item.name === item.name)
                         bankItem = false;

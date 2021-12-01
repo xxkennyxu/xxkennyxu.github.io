@@ -1806,8 +1806,10 @@ var C_ICON_DIV = createDivWithColor("@", "purple");
 var NL = "<br>";
 var LoggingSystem = /** @class */ (function (_super) {
     logging_extends(LoggingSystem, _super);
-    function LoggingSystem() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
+    function LoggingSystem(isMerchant) {
+        if (isMerchant === void 0) { isMerchant = false; }
+        var _this = _super.call(this) || this;
+        _this.isMerchant = isMerchant;
         _this.messageQueue = {};
         return _this;
     }
@@ -1835,16 +1837,19 @@ var LoggingSystem = /** @class */ (function (_super) {
         // Combat Logging
         var currentTarget = getCombatSystem().currentTarget;
         var combatLogIcon = getCombatSystem().getLogIcon();
-        var combatLogging = "" + NL + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
+        var combatLogging = this.isMerchant ? "" : "" + NL + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
         // Movement Logging
-        var movementLogging = smart.moving ? "\n" + utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName : "";
+        var movementLogging = smart.moving ? NL + (utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName) : "";
         // Location Logging
-        var locSystem = utils_getLocationSystem();
-        var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
-        var locationLogging = "" + parent.currentLocation;
-        if (parent.currentLocation != locSystem.nextLocationName)
-            locationLogging += "->" + locSystem.nextLocationName;
-        locationLogging = "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
+        var locationLogging = "";
+        if (!this.isMerchant) {
+            var locSystem = utils_getLocationSystem();
+            var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
+            locationLogging = "" + parent.currentLocation;
+            if (parent.currentLocation != locSystem.nextLocationName)
+                locationLogging += "->" + locSystem.nextLocationName;
+            locationLogging = "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
+        }
         // World Boss Logging
         var wbLogging = "";
         var trackedWorldBosses = ["grinch"];
@@ -2836,7 +2841,7 @@ characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new Sol
 new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem(true), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

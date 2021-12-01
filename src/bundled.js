@@ -266,8 +266,8 @@ function isCharacterWithin(targetLocation, size) {
         return false;
     var destinationX = targetLocation.x;
     var destinationY = targetLocation.y;
-    var currDestinationX = character.x;
-    var currDestinationY = character.y;
+    var currDestinationX = character.real_x;
+    var currDestinationY = character.real_y;
     return Math.abs(destinationX - currDestinationX) < size && Math.abs(destinationY - currDestinationY) < size;
 }
 function changeServer(region, id) {
@@ -447,7 +447,7 @@ function zUi() {
         var iframe = iframes[i];
         if (!iframe.contentDocument)
             continue;
-        iframe.style.height = "200px";
+        iframe.style.height = "240px";
         iframe.contentDocument.body.style.marginTop = "1px";
         iframe.contentDocument.body.style.marginLeft = "";
         iframe.contentDocument.body.style.marginRight = "";
@@ -1239,8 +1239,8 @@ var StateMachine = /** @class */ (function () {
     });
     StateMachine.prototype.logState = function () {
         if (this.previousState && this.currentState) {
-            getLoggingSystem().addLogMessage(PREVIOUS_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.previousState) + "s <br>" + this.previousStateDisplay, "t_previous_state", 60000);
-            getLoggingSystem().addLogMessage(CURRENT_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.currentState) + "s <br>" + this.currentStateDisplay, "t_current_state", 60000);
+            getLoggingSystem().addLogMessage(PREVIOUS_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.previousState) + "s <br>" + this.previousStateDisplay, "t_previous_state_" + this.name, 60000);
+            getLoggingSystem().addLogMessage(CURRENT_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.currentState) + "s <br>" + this.currentStateDisplay, "t_current_state_" + this.name, 60000);
         }
     };
     return StateMachine;
@@ -2624,6 +2624,13 @@ var Cleaning = /** @class */ (function () {
         this._stateMachine.currentState = CleaningState.IDLING;
         this.startCheckCleanLoop();
     }
+    Object.defineProperty(Cleaning.prototype, "stateMachine", {
+        get: function () {
+            return this._stateMachine;
+        },
+        enumerable: false,
+        configurable: true
+    });
     Cleaning.prototype.hasItems = function () {
         return this._cleanQueue.length > 0;
     };
@@ -2712,8 +2719,8 @@ var UpgradingState;
     UpgradingState[UpgradingState["IDLING"] = 0] = "IDLING";
     UpgradingState[UpgradingState["MOVING_BANK"] = 1] = "MOVING_BANK";
     UpgradingState[UpgradingState["ARRIVING_BANK"] = 2] = "ARRIVING_BANK";
-    UpgradingState[UpgradingState["SERACHING_AT_BANK"] = 3] = "SERACHING_AT_BANK";
-    UpgradingState[UpgradingState["STORING_AT_BANK"] = 4] = "STORING_AT_BANK";
+    UpgradingState[UpgradingState["SEARCHING_BANK"] = 3] = "SEARCHING_BANK";
+    UpgradingState[UpgradingState["STORING_BANK"] = 4] = "STORING_BANK";
     UpgradingState[UpgradingState["MOVING_REFINER"] = 5] = "MOVING_REFINER";
     UpgradingState[UpgradingState["PREPARING"] = 6] = "PREPARING";
     UpgradingState[UpgradingState["STARTING_UPGRADE"] = 7] = "STARTING_UPGRADE";
@@ -2801,18 +2808,18 @@ var Upgrading = /** @class */ (function () {
         }
         else if (this._stateMachine.currentState === UpgradingState.ARRIVING_BANK) {
             if (this._targetItem)
-                this._stateMachine.currentState = UpgradingState.SERACHING_AT_BANK;
+                this._stateMachine.currentState = UpgradingState.SEARCHING_BANK;
             else if (this._lastTargetItem)
-                this._stateMachine.currentState = UpgradingState.STORING_AT_BANK;
+                this._stateMachine.currentState = UpgradingState.STORING_BANK;
             else
                 throw new Error("State Error in " + UpgradingState[UpgradingState.ARRIVING_BANK]);
         }
-        else if (this._stateMachine.currentState === UpgradingState.SERACHING_AT_BANK) {
+        else if (this._stateMachine.currentState === UpgradingState.SEARCHING_BANK) {
             this.searchForTargetItem();
             utils_getLocationSystem().smartMove("scrolls", "scrolls");
             this._stateMachine.currentState = UpgradingState.MOVING_REFINER;
         }
-        else if (this._stateMachine.currentState === UpgradingState.STORING_AT_BANK) {
+        else if (this._stateMachine.currentState === UpgradingState.STORING_BANK) {
             this.storeLastTargetItem();
             this._lastTargetItem = null;
             this._upgradeQueue.shift();
@@ -3006,11 +3013,16 @@ var Zetchant = /** @class */ (function () {
             _this.loggingSystem.beforeBusy();
             _this.loggingSystem.tick();
             _this.upgrading.stateMachine.logState();
+            _this.cleaning.stateMachine.logState();
+            // TODO: Stand logic
             if (_this.upgrading.hasItems()) {
                 _this.upgrading.tick();
             }
             else if (_this.cleaning.hasItems()) {
                 _this.cleaning.tick();
+            }
+            else if (!smart.moving && !isCharacterWithin(SmartLocations.TOWN, 500)) {
+                utils_getLocationSystem().smartMove("town", "town");
             }
         }, 1000);
     };

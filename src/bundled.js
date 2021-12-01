@@ -2912,7 +2912,7 @@ characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new Sol
 new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem().setLogCombat(false).setLogLocation(false), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

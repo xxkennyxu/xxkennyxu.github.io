@@ -1225,14 +1225,14 @@ var StateMachine = /** @class */ (function () {
     };
     Object.defineProperty(StateMachine.prototype, "previousStateDisplay", {
         get: function () {
-            return this.stateEnumAccessor(this._previousState);
+            return createDivWithColor(this.stateEnumAccessor(this._previousState), "yellow");
         },
         enumerable: false,
         configurable: true
     });
     Object.defineProperty(StateMachine.prototype, "currentStateDisplay", {
         get: function () {
-            return this.stateEnumAccessor(this._currentState);
+            return createDivWithColor(this.stateEnumAccessor(this._currentState), "green");
         },
         enumerable: false,
         configurable: true
@@ -2979,7 +2979,7 @@ var Vending = /** @class */ (function () {
         if (!isCharacterWithin(SmartLocations.OPEN_STAND, 10) && !smart.moving) {
             utils_getLocationSystem().smartMove(SmartLocations.OPEN_STAND, SmartLocations.OPEN_STAND.name);
         }
-        else if (!isStandOpen() && isCharacterWithin(SmartLocations.OPEN_STAND, 0)) {
+        else if (!smart.moving && !isStandOpen() && isCharacterWithin(SmartLocations.OPEN_STAND, 0)) {
             open_stand(0);
         }
         else if (isStandOpen() && this.vendingItemQueue.length) {

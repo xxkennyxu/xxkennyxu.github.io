@@ -268,7 +268,7 @@ function isCharacterWithin(targetLocation, size) {
     var destinationY = targetLocation.y;
     var currDestinationX = character.real_x;
     var currDestinationY = character.real_y;
-    return Math.abs(destinationX - currDestinationX) < size && Math.abs(destinationY - currDestinationY) < size;
+    return Math.abs(destinationX - currDestinationX) <= size && Math.abs(destinationY - currDestinationY) <= size;
 }
 function changeServer(region, id) {
     if (character.controller)
@@ -1238,7 +1238,7 @@ var StateMachine = /** @class */ (function () {
         configurable: true
     });
     StateMachine.prototype.logState = function () {
-        if (this.previousState && this.currentState) {
+        if (this.previousState != null && this.currentState != null) {
             getLoggingSystem().addLogMessage(PREVIOUS_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.previousState) + "s <br>" + this.previousStateDisplay, "t_previous_state_" + this.name, 60000);
             getLoggingSystem().addLogMessage(CURRENT_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.currentState) + "s <br>" + this.currentStateDisplay, "t_current_state_" + this.name, 60000);
         }
@@ -1345,7 +1345,6 @@ var CombatSystem = /** @class */ (function (_super) {
         }
     };
     /**
-     * TODO: Clean up logging and attack types with enum?
      * Priority:
      *  1. Follow the party leaders target
      *  2. Kill world bosses
@@ -1456,9 +1455,7 @@ var CombatSystem = /** @class */ (function (_super) {
             var cAtkPerSecond = 1 / character.frequency;
             return Math.floor((numAttacks * cAtkPerSecond) / mAtkPerSecond);
         };
-        // TODO: incorporate evasion 
-        // TODO; incorporate pierce // rpiercing // apiercing
-        // TODO; range
+        // TODO: range, incorporate evasion, incorporate pierce // rpiercing // apiercing
         // reflection
         // life steal
         // Attack count TO KILL calculation
@@ -1818,6 +1815,7 @@ var SmartLocations = /** @class */ (function () {
     function SmartLocations() {
     }
     SmartLocations.TOWN = SmartMoveLocation.create(0, 0, "main", "town");
+    SmartLocations.OPEN_STAND = SmartMoveLocation.create(130, 0, "main", "open_stand");
     return SmartLocations;
 }());
 
@@ -1978,7 +1976,6 @@ var SoloLocation = /** @class */ (function (_super) {
             if (!worldBossSmartMoveLocation[worldBossName])
                 debugLog("No SmartLocation found for " + worldBossName);
             if (worldBoss) {
-                // TODO: make this prettier?
                 if (worldBoss.serverIdentifier != server.id || worldBoss.serverRegion != server.region) {
                     changeServer(worldBoss.serverRegion, worldBoss.serverIdentifier);
                     return;
@@ -2969,7 +2966,65 @@ var Upgrading = /** @class */ (function () {
 }());
 
 
+;// CONCATENATED MODULE: ./src/characters/merchant/vending.ts
+
+
+var C_MERCHANT_SELL_ITEM_VALUE_MULT = 4;
+var Vending = /** @class */ (function () {
+    function Vending() {
+        this.vendingItemQueue = [];
+        this.registerVendingItemQueueUpdater();
+    }
+    Vending.prototype.tick = function () {
+        if (!isCharacterWithin(SmartLocations.OPEN_STAND, 10) && !smart.moving) {
+            utils_getLocationSystem().smartMove(SmartLocations.OPEN_STAND, SmartLocations.OPEN_STAND.name);
+        }
+        else if (!isStandOpen() && isCharacterWithin(SmartLocations.OPEN_STAND, 0)) {
+            open_stand(0);
+        }
+        else if (isStandOpen() && this.vendingItemQueue.length) {
+            this.registerVendingItemsFromQueue();
+        }
+    };
+    Vending.prototype.registerVendingItemsFromQueue = function () {
+        // TODO:
+    };
+    Vending.prototype.registerVendingItemQueueUpdater = function () {
+        // TODO:
+    };
+    Vending.prototype.getStandSlots = function () {
+        if (!isStandOpen())
+            return null;
+        var stand_slots = [];
+        for (var i = 1; i <= 16; i++) {
+            var slot_name = "trade" + i;
+            if (!character.slots[slot_name]) {
+                stand_slots.push(slot_name);
+            }
+        }
+        return stand_slots;
+    };
+    Vending.prototype.registerStandItems = function (items, price) {
+        var open_stand_slots = this.getStandSlots();
+        if (!open_stand_slots || open_stand_slots.length === 0)
+            return;
+        var stand_idx = 0;
+        for (var i in items) {
+            var item = items[i];
+            var vend_item_idx = getInventorySystem().findItem({ name: item.name, level: item.level });
+            if (vend_item_idx != -1) {
+                var list_price = price ? price : item_value(item) * C_MERCHANT_SELL_ITEM_VALUE_MULT;
+                trade(vend_item_idx, open_stand_slots[stand_idx++], list_price);
+                log("Listing " + item.name + " for " + list_price + " gold");
+            }
+        }
+    };
+    return Vending;
+}());
+
+
 ;// CONCATENATED MODULE: ./src/characters/merchant/zetchant.ts
+
 
 
 
@@ -2985,6 +3040,7 @@ var Zetchant = /** @class */ (function () {
         this.loggingSystem = loggingSystem;
         this.upgrading = new Upgrading();
         this.cleaning = new Cleaning();
+        this.vending = new Vending();
     }
     Zetchant.prototype.start = function () {
         // global variables
@@ -3014,7 +3070,6 @@ var Zetchant = /** @class */ (function () {
             _this.loggingSystem.tick();
             _this.upgrading.stateMachine.logState();
             _this.cleaning.stateMachine.logState();
-            // TODO: Stand logic
             if (_this.upgrading.hasItems()) {
                 _this.upgrading.tick();
             }
@@ -3023,6 +3078,9 @@ var Zetchant = /** @class */ (function () {
             }
             else if (!smart.moving && !isCharacterWithin(SmartLocations.TOWN, 500)) {
                 utils_getLocationSystem().smartMove("town", "town");
+            }
+            else {
+                _this.vending.tick();
             }
         }, 1000);
     };

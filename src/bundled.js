@@ -1373,7 +1373,7 @@ var CombatSystem = /** @class */ (function (_super) {
             if (player && distance(character, player) < 300) {
                 combatPartyMemberCount++;
             }
-            if (player && player.target === bossTarget.id) {
+            if ((player === null || player === void 0 ? void 0 : player.target) === bossTarget.id) {
                 combatPartyMemberTargetCount++;
             }
         }
@@ -1389,7 +1389,8 @@ var CombatSystem = /** @class */ (function (_super) {
             var isTargetedByParty = false;
             // check if target is free; exclude if not
             getPartySystem().combatPartyMembers.forEach(function (member) {
-                if (parent.entities[member] && parent.entities[member].target === monster.id) {
+                var _a;
+                if (((_a = parent.entities[member]) === null || _a === void 0 ? void 0 : _a.target) === monster.id) {
                     isTargetedByParty = true;
                 }
             });
@@ -1470,13 +1471,13 @@ var CombatSystem = /** @class */ (function (_super) {
         return entities.length ? entities[0] : null;
     };
     CombatSystem.prototype.isIgnoredMonster = function (target) {
-        return target && C_IGNORE_MONSTER.includes(target.name);
+        return C_IGNORE_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
     };
     CombatSystem.prototype.isBoss = function (target) {
-        return target && C_BOSS_MONSTER.includes(target.name);
+        return C_BOSS_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
     };
     CombatSystem.prototype.isWorldBoss = function (target) {
-        return target && C_WORLD_BOSS_MONSTER.includes(target.name);
+        return C_WORLD_BOSS_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
     };
     CombatSystem.prototype.findTarget = function () {
         var target = this.getTarget();
@@ -1610,7 +1611,6 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-
 var whitelistedWorldBosses = ["snowman"];
 var worldBossSmartMoveLocation = {
     "snowman": SNOWMAN
@@ -1626,7 +1626,7 @@ var SoloLocation = /** @class */ (function (_super) {
         return _this;
     }
     SoloLocation.prototype.beforeBusy = function () {
-        var grinch = AlDataClient.alData.grinch && AlDataClient.alData.grinch.length ? AlDataClient.alData.grinch[0] : null;
+        var grinch = getAlWorldBoss("grinch");
         if (parent.S["grinch"].live) {
             // TODO: grinch is special, remove after event is over
             if (secSince(this.lastDestinationChangeAt) > 10 && getCombatSystem().currentState != CombatState.WB) {
@@ -1634,8 +1634,8 @@ var SoloLocation = /** @class */ (function (_super) {
                 this.lastDestinationChangeAt = new Date();
             }
         }
-        else if (grinch && grinch.live) {
-            changeServer(grinch.server_region, grinch.server_identifier);
+        else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
+            changeServer(grinch.serverRegion, grinch.serverIdentifier);
         }
     };
     SoloLocation.prototype.tick = function () {
@@ -1838,7 +1838,7 @@ var LoggingSystem = /** @class */ (function (_super) {
             locationLogging = "" + parent.currentLocation;
             if (parent.currentLocation != locSystem.nextLocationName)
                 locationLogging += "->" + locSystem.nextLocationName;
-            locationLogging = !this._logLocation ? "" : "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
+            locationLogging = "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
         }
         // World Boss Logging
         var wbLogging = "";

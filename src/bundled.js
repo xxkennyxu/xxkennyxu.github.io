@@ -1501,69 +1501,6 @@ var NoOpCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
-;// CONCATENATED MODULE: ./src/systems/inventory/useMerchant.ts
-var useMerchant_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-
-var C_SEND_ITEM_DISTANCE = 400;
-var C_MERCHANT_SEND_GOLD_THRESHOLD = 500000;
-var C_INVENTORY_DEFAULT_SIZE = 3; // 2 pots + tracker
-var C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD = C_INVENTORY_DEFAULT_SIZE + 2;
-var UseMerchant = /** @class */ (function (_super) {
-    useMerchant_extends(UseMerchant, _super);
-    function UseMerchant() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    UseMerchant.prototype.beforeBusy = function () {
-        _super.prototype.beforeBusy.call(this);
-        this.transferItemsToMerchant();
-    };
-    UseMerchant.prototype.tick = function () {
-        this.hpPotQty = character.items[locate_item(this.hpPotName)].q;
-        this.mpPotQty = character.items[locate_item(this.mpPotName)].q;
-        this.restockPotionsAt(this.hpPotName, true);
-        this.restockPotionsAt(this.mpPotName, true);
-    };
-    UseMerchant.prototype.transferItemsToMerchant = function () {
-        var inventorySize = this.inventorySize();
-        var maybeTarget = get_player(InventorySystem.merchantName);
-        if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 10000)) {
-            this.useMerchant();
-        }
-        else if (get_party()[InventorySystem.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
-            sendComeToMeCommand(InventorySystem.merchantName);
-        }
-    };
-    UseMerchant.prototype.useMerchant = function () {
-        this.sendItems(InventorySystem.merchantName);
-        send_gold(InventorySystem.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
-        var hpPotRequestCount = 20 * this.potQtyThreshold - this.hpPotQty;
-        var mpPotRequestCount = 20 * this.potQtyThreshold - this.mpPotQty;
-        if (hpPotRequestCount > 0)
-            sendBringPotionCommand(InventorySystem.merchantName, this.hpPotName, false, hpPotRequestCount);
-        if (mpPotRequestCount > 0)
-            sendBringPotionCommand(InventorySystem.merchantName, this.mpPotName, false, mpPotRequestCount);
-    };
-    return UseMerchant;
-}(InventorySystem));
-
-
 ;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
 var SmartMoveLocation = /** @class */ (function () {
     function SmartMoveLocation(x, y, map, name) {
@@ -1794,7 +1731,6 @@ var logging_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-
 var C_MESSAGE_TYPE_MERCHANT = "t_merchant";
 var C_MESSAGE_TYPE_STALL = "t_stall";
 var C_MESSAGE_TYPE_GOLD = "t_gold";
@@ -1806,13 +1742,47 @@ var C_ICON_DIV = createDivWithColor("@", "purple");
 var NL = "<br>";
 var LoggingSystem = /** @class */ (function (_super) {
     logging_extends(LoggingSystem, _super);
-    function LoggingSystem(isMerchant) {
-        if (isMerchant === void 0) { isMerchant = false; }
+    function LoggingSystem() {
         var _this = _super.call(this) || this;
-        _this.isMerchant = isMerchant;
         _this.messageQueue = {};
+        _this._logMovement = true;
+        _this._logStatus = true;
+        _this._logMoney = false;
+        _this._logInventory = true;
+        _this._logCombat = true;
+        _this._logLocation = true;
+        _this._logWorldBosses = true;
+        _this._itemsShownCount = 0;
         return _this;
     }
+    LoggingSystem.prototype.setLogMovement = function (value) {
+        this._logMovement = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogStatus = function (value) {
+        this._logStatus = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogMoney = function (value) {
+        this._logMoney = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogInventory = function (value) {
+        this._logInventory = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogCombat = function (value) {
+        this._logCombat = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogLocation = function (value) {
+        this._logLocation = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogWorldBosses = function (value) {
+        this._logWorldBosses = value;
+        return this;
+    };
     LoggingSystem.prototype.getName = function () {
         return "LoggingSystem";
     };
@@ -1830,62 +1800,80 @@ var LoggingSystem = /** @class */ (function (_super) {
         var hpDiv = createDivWithColor(Math.trunc(getHpPercent() * 100) + "%", "indianred");
         var mpDiv = createDivWithColor(Math.trunc(getMpPercent() * 100) + "%", "lightblue");
         var lvlDiv = createDivWithColor("Lv" + character.level + " (" + Math.trunc(character.xp / character.max_xp * 100) + "%)", "greenyellow");
-        var statusLogging = hpDiv + "/" + mpDiv + " | " + lvlDiv;
+        var statusLogging = !this._logStatus ? "" : hpDiv + "/" + mpDiv + " | " + lvlDiv;
+        // Money Logging
+        var moneyLogging = !this._logMoney ? "" : NL + "&#128184; " + character.gold;
         // Inventory Logging
-        var inventorySize = getInventorySystem().inventorySize();
-        var inventoryLogging = "" + NL + getInventorySystem().getLogIcon() + (C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize);
+        var inventoryLogging = "";
+        if (this._logInventory) {
+            var inventorySize = getInventorySystem().inventorySize();
+            inventoryLogging = "" + NL + getInventorySystem().getLogIcon() + " " + inventorySize + ": ";
+            var itemsSeen = 0;
+            for (var i = 0; i < character.items.length; i++) {
+                var maybeItem = character.items[i];
+                if (!maybeItem)
+                    continue;
+                itemsSeen++;
+                if (itemsSeen <= this._itemsShownCount)
+                    continue;
+                inventoryLogging += maybeItem.name;
+                this._itemsShownCount++;
+            }
+            if (this._itemsShownCount >= inventorySize) {
+                this._itemsShownCount = 0;
+            }
+        }
         // Combat Logging
         var currentTarget = getCombatSystem().currentTarget;
         var combatLogIcon = getCombatSystem().getLogIcon();
-        var combatLogging = this.isMerchant ? "" : "" + NL + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
+        var combatLogging = !this._logCombat ? "" : "" + NL + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
         // Movement Logging
-        var movementLogging = smart.moving ? NL + (utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName) : "";
+        var movementLogging = !this._logMovement || !smart.moving ? "" : NL + (utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName);
         // Location Logging
-        var locationLogging = "";
-        if (!this.isMerchant) {
-            var locSystem = utils_getLocationSystem();
-            var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
-            locationLogging = "" + parent.currentLocation;
-            if (parent.currentLocation != locSystem.nextLocationName)
-                locationLogging += "->" + locSystem.nextLocationName;
-            locationLogging = "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
-        }
+        var locSystem = utils_getLocationSystem();
+        var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
+        var locationLogging = "" + parent.currentLocation;
+        if (parent.currentLocation != locSystem.nextLocationName)
+            locationLogging += "->" + locSystem.nextLocationName;
+        locationLogging = !this._logLocation ? "" : "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
         // World Boss Logging
         var wbLogging = "";
-        var trackedWorldBosses = ["grinch"];
-        whitelistedWorldBosses.forEach(function (wb) { return trackedWorldBosses.push(wb); });
-        for (var i = 0; i < trackedWorldBosses.length; i++) {
-            var wbName = trackedWorldBosses[i];
-            var worldBoss = void 0, isLive = void 0, timeRemaining = void 0;
-            var parentWorldBoss = getParentWorldBoss(wbName);
-            var alWorldBoss = getAlWorldBoss(wbName);
-            // Check for live status first
-            if (parentWorldBoss && parentWorldBoss.live) {
-                worldBoss = parentWorldBoss;
-                isLive = true;
-            }
-            else if (alWorldBoss && alWorldBoss.live) {
-                worldBoss = alWorldBoss;
-                isLive = true;
-            }
-            else {
-                // check remaining timer on both bosses
-                var parentTts = timeTillWorldBoss(parentWorldBoss);
-                var alTts = timeTillWorldBoss(alWorldBoss);
-                worldBoss = parentTts < alTts ? parentWorldBoss : alWorldBoss;
-                timeRemaining = parentTts < alTts ? parentTts : alTts;
-            }
-            if (isLive) {
-                wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
-            }
-            else if (timeRemaining) {
-                wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
-            }
-            else {
-                wbLogging += NL + createDivWithColor("[???] " + wbName + ": N/A", "red");
+        if (this._logWorldBosses) {
+            var trackedWorldBosses_1 = ["grinch"];
+            whitelistedWorldBosses.forEach(function (wb) { return trackedWorldBosses_1.push(wb); });
+            for (var i = 0; i < trackedWorldBosses_1.length; i++) {
+                var wbName = trackedWorldBosses_1[i];
+                var worldBoss = void 0, isLive = void 0, timeRemaining = void 0;
+                var parentWorldBoss = getParentWorldBoss(wbName);
+                var alWorldBoss = getAlWorldBoss(wbName);
+                // Check for live status first
+                if (parentWorldBoss && parentWorldBoss.live) {
+                    worldBoss = parentWorldBoss;
+                    isLive = true;
+                }
+                else if (alWorldBoss && alWorldBoss.live) {
+                    worldBoss = alWorldBoss;
+                    isLive = true;
+                }
+                else {
+                    // check remaining timer on both bosses
+                    var parentTts = timeTillWorldBoss(parentWorldBoss);
+                    var alTts = timeTillWorldBoss(alWorldBoss);
+                    worldBoss = parentTts < alTts ? parentWorldBoss : alWorldBoss;
+                    timeRemaining = parentTts < alTts ? parentTts : alTts;
+                }
+                if (isLive) {
+                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
+                }
+                else if (timeRemaining) {
+                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
+                }
+                else {
+                    wbLogging += NL + createDivWithColor("[???] " + wbName + ": N/A", "red");
+                }
             }
         }
-        var display_msg = "" + statusLogging + inventoryLogging + combatLogging + locationLogging + movementLogging + wbLogging;
+        var display_msg = "" + statusLogging + moneyLogging + inventoryLogging + combatLogging + locationLogging + movementLogging + wbLogging;
         for (var k in this.messageQueue) {
             display_msg += NL;
             display_msg += this.messageQueue[k].message;
@@ -2011,7 +1999,6 @@ var ZetchantMerchant = /** @class */ (function (_super) {
         if (this.UPGRADE_QUEUE.length) {
             getLoggingSystem().addLogMessage("&#128296; " + this.UPGRADE_QUEUE.length + "-" + this.UPGRADE_QUEUE[0].name, C_MESSAGE_TYPE_UPGRADE);
         }
-        getLoggingSystem().addLogMessage("&#128184;" + character.gold, C_MESSAGE_TYPE_GOLD);
     };
     ZetchantMerchant.prototype.tick = function () {
         // if (character.map === "mansion") {
@@ -2775,6 +2762,69 @@ var FollowPartyLocation = /** @class */ (function (_super) {
 }(LocationSystem));
 
 
+;// CONCATENATED MODULE: ./src/systems/inventory/useMerchant.ts
+var useMerchant_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+
+var C_SEND_ITEM_DISTANCE = 400;
+var C_MERCHANT_SEND_GOLD_THRESHOLD = 500000;
+var C_INVENTORY_DEFAULT_SIZE = 3; // 2 pots + tracker
+var C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD = C_INVENTORY_DEFAULT_SIZE + 2;
+var UseMerchant = /** @class */ (function (_super) {
+    useMerchant_extends(UseMerchant, _super);
+    function UseMerchant() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    UseMerchant.prototype.beforeBusy = function () {
+        _super.prototype.beforeBusy.call(this);
+        this.transferItemsToMerchant();
+    };
+    UseMerchant.prototype.tick = function () {
+        this.hpPotQty = character.items[locate_item(this.hpPotName)].q;
+        this.mpPotQty = character.items[locate_item(this.mpPotName)].q;
+        this.restockPotionsAt(this.hpPotName, true);
+        this.restockPotionsAt(this.mpPotName, true);
+    };
+    UseMerchant.prototype.transferItemsToMerchant = function () {
+        var inventorySize = this.inventorySize();
+        var maybeTarget = get_player(InventorySystem.merchantName);
+        if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 10000)) {
+            this.useMerchant();
+        }
+        else if (get_party()[InventorySystem.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
+            sendComeToMeCommand(InventorySystem.merchantName);
+        }
+    };
+    UseMerchant.prototype.useMerchant = function () {
+        this.sendItems(InventorySystem.merchantName);
+        send_gold(InventorySystem.merchantName, character.gold - C_MERCHANT_SEND_GOLD_THRESHOLD);
+        var hpPotRequestCount = 20 * this.potQtyThreshold - this.hpPotQty;
+        var mpPotRequestCount = 20 * this.potQtyThreshold - this.mpPotQty;
+        if (hpPotRequestCount > 0)
+            sendBringPotionCommand(InventorySystem.merchantName, this.hpPotName, false, hpPotRequestCount);
+        if (mpPotRequestCount > 0)
+            sendBringPotionCommand(InventorySystem.merchantName, this.mpPotName, false, mpPotRequestCount);
+    };
+    return UseMerchant;
+}(InventorySystem));
+
+
 ;// CONCATENATED MODULE: ./src/systems/inventory/isMerchant.ts
 var isMerchant_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -2841,7 +2891,7 @@ characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new Sol
 new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem(true), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

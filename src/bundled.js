@@ -1163,7 +1163,7 @@ function handleBuffRequest(name, data) {
 ;// CONCATENATED MODULE: ./src/lib/state.ts
 
 var PREVIOUS_SYMBOL = createDivWithColor("&#9737;", "yellow", 10);
-var CURRENT_SYMBOL = createDivWithColor("&#9737;", "green", 10);
+var CURRENT_SYMBOL = createDivWithColor("&#9737;", "#A6D422", 10);
 var StateMachine = /** @class */ (function () {
     function StateMachine(name, stateEnumAccessor, shouldLog) {
         if (shouldLog === void 0) { shouldLog = false; }
@@ -1232,7 +1232,7 @@ var StateMachine = /** @class */ (function () {
     });
     Object.defineProperty(StateMachine.prototype, "currentStateDisplay", {
         get: function () {
-            return createDivWithColor(this.stateEnumAccessor(this._currentState), "green");
+            return createDivWithColor(this.stateEnumAccessor(this._currentState), "#A6D422");
         },
         enumerable: false,
         configurable: true

@@ -247,9 +247,18 @@ function timeTillWorldBoss(worldBoss) {
     var timeRemaining = bossSpawnTime.getTime() - currentTime.getTime();
     return timeRemaining;
 }
+function isWithinSquare(previousLocation, targetLocation, size) {
+    var destinationX = targetLocation.x;
+    var destinationY = targetLocation.y;
+    var currDestinationX = previousLocation.x;
+    var currDestinationY = previousLocation.y;
+    return Math.abs(destinationX - currDestinationX) < size && Math.abs(destinationY - currDestinationY) < size;
+}
 function changeServer(region, id) {
     if (character.controller)
-        return;
+        return; // don't let iframe characters switch servers
+    if (region === server.region && id === server.id)
+        return; // don't switch servers to the same server
     var minutesSinceLogin = sinceConvert(parent.loginDate, TimeIn.MINUTES);
     getLoggingSystem().addLogMessage(region + "_" + id + "_" + minutesSinceLogin, "changeServer");
     // proxy characters should not invoke change_server
@@ -1523,6 +1532,7 @@ var SmartMoveLocation = /** @class */ (function () {
     };
     return SmartMoveLocation;
 }());
+
 var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
 var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
 var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
@@ -1625,22 +1635,27 @@ var SoloLocation = /** @class */ (function (_super) {
         parent.currentLocation = "?";
         return _this;
     }
-    SoloLocation.prototype.beforeBusy = function () {
+    SoloLocation.prototype.tick = function () {
+        // TODO: grinch is special, remove after event is over
         var grinch = getAlWorldBoss("grinch");
-        if (parent.S["grinch"].live) {
-            // TODO: grinch is special, remove after event is over
+        if (parent.S.grinch.live) {
+            if (!this.previousGrinchLocation) {
+                this.previousGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
+            }
             if (secSince(this.lastDestinationChangeAt) > 10 && getCombatSystem().currentState != CombatState.WB) {
-                this.smartMove(parent.S["grinch"], "grinch");
-                this.lastDestinationChangeAt = new Date();
+                var currentGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
+                if (!smart.moving || !isWithinSquare(this.previousGrinchLocation, currentGrinchLocation, 200)) {
+                    this.smartMove(parent.S["grinch"], "grinch");
+                    this.lastDestinationChangeAt = new Date();
+                }
+                this.previousGrinchLocation = currentGrinchLocation;
             }
         }
         else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
             changeServer(grinch.serverRegion, grinch.serverIdentifier);
         }
-    };
-    SoloLocation.prototype.tick = function () {
         // Engaged in boss/worldboss, do not move
-        if (getCombatSystem().currentState === CombatState.WB || getCombatSystem().currentState === CombatState.B) {
+        else if (getCombatSystem().currentState === CombatState.WB || getCombatSystem().currentState === CombatState.B) {
             if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
                 this.forceNextLocation();
             }

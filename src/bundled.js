@@ -2683,12 +2683,15 @@ var Cleaning = /** @class */ (function () {
                     }
                 }
                 // if clean queue has the item, skip
+                var bankItem = true;
                 for (var j = 0; j < _this._cleanQueue.length; j++) {
                     if (_this._cleanQueue[j].item.name === item.name)
-                        break;
+                        bankItem = false;
                 }
-                game_log("Will clean " + item.name);
-                _this._cleanQueue.push({ idx: i, item: item });
+                if (bankItem) {
+                    game_log("Will clean " + item.name);
+                    _this._cleanQueue.push({ idx: i, item: item });
+                }
             };
             for (var i = 0; i < character.items.length; i++) {
                 _loop_1(i);

@@ -24,8 +24,9 @@ var AlDataClient = /** @class */ (function () {
             var timePassedInMinutes = sinceConvert(new Date(cachedData.time), TimeIn.MINUTES);
             if (timePassedInMinutes < 45) {
                 AlDataClient.alData = cachedData.data;
-                if (character.name === "Zett")
-                    game_log("loading from cache, " + timePassedInMinutes + " minutes old");
+                if (character.name === "Zett") {
+                    debugLog("Loading cached data " + timePassedInMinutes + "mins...", "cacheAlData", 60000);
+                }
                 return;
             }
             else {
@@ -99,18 +100,24 @@ var AlDataClient = /** @class */ (function () {
         xhr.send();
     };
     AlDataClient.shiftExpired = function () {
-        var parentWorldBosses = getWorldBosses();
         for (var _i = 0, _a = Object.entries(AlDataClient.alData); _i < _a.length; _i++) {
             var _b = _a[_i], key = _b[0], alDataList = _b[1];
             if (alDataList.length) {
-                var parentBoss = parentWorldBosses[key];
+                var parentBoss = getParentWorldBoss(key);
                 var boss = WorldBoss.create(alDataList[0]);
-                if (parentBoss
-                    && timeTillWorldBoss(boss) < 0
-                    && parentBoss.serverIdentifier === boss.serverIdentifier && parentBoss.serverRegion === boss.serverRegion
-                    && !parentBoss.live) {
+                if (key === "snowman") {
                     console.log(parentBoss);
-                    game_log("Pruning [" + boss.serverRegion + "_" + boss.serverIdentifier + "] " + boss.name);
+                    console.log(boss);
+                    console.log(timeTillWorldBoss(boss));
+                    console.log((parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverIdentifier) === boss.serverIdentifier && (parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverRegion) === boss.serverRegion);
+                    console.log(!(parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.live));
+                    console.log("\n\n\n");
+                }
+                if ((timeTillWorldBoss(boss) < 0 || boss.live) // when we fetch AlData it could be that boss was alive
+                    && (parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverIdentifier) === boss.serverIdentifier && (parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverRegion) === boss.serverRegion
+                    && !(parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.live)) {
+                    console.log(parentBoss);
+                    game_log(">>PRUNING [" + boss.serverRegion + "_" + boss.serverIdentifier + "] " + boss.name);
                     alDataList.shift();
                     this.updateCache();
                 }
@@ -567,8 +574,8 @@ var CharacterFunction = /** @class */ (function () {
         return this.skills;
     };
     CharacterFunction.prototype.beforeBusy = function () {
-        this.hpPotUse();
         this.mpPotUse();
+        this.hpPotUse();
         loot();
     };
     CharacterFunction.prototype.setup = function () {
@@ -590,7 +597,7 @@ var CharacterFunction = /** @class */ (function () {
             this.lastHpPotionUsedAt = new Date();
     };
     CharacterFunction.prototype.mpPotUse = function () {
-        if (is_on_cooldown("use_mp") || safeties && mssince(this.lastMpPotionUsedAt) < min(200, character.ping * 3))
+        if (is_on_cooldown("use_hp") || safeties && mssince(this.lastMpPotionUsedAt) < min(200, character.ping * 3))
             return;
         var used = true;
         if (getMpPercent() < this.usePercent / 100)
@@ -639,21 +646,11 @@ var Character = /** @class */ (function () {
             if (parent.changingServers) {
                 return;
             }
-            try {
-                _this.characterFunction.beforeBusy();
-            }
-            catch (exception) {
-                logException("charFunc->beforeBusy", exception);
-            }
+            _this.characterFunction.beforeBusy();
             _this.systemFuncBeforeBusy();
             if (is_moving(character) || smart.moving || isQBusy())
                 return;
-            try {
-                _this.characterFunction.tick();
-            }
-            catch (exception) {
-                logException("charFunc->tick", exception);
-            }
+            _this.characterFunction.tick();
             _this.systemFuncTick();
         }, ms);
     };
@@ -2472,6 +2469,7 @@ var ZettWarrior = /** @class */ (function (_super) {
         // }
     };
     ZettWarrior.prototype.beforeBusy = function () {
+        _super.prototype.beforeBusy.call(this);
         if (smart.moving) {
             useSkill(this.getSkills().charge);
         }

@@ -261,6 +261,15 @@ function isWithinSquare(previousLocation, targetLocation, size) {
     var currDestinationY = previousLocation.y;
     return Math.abs(destinationX - currDestinationX) < size && Math.abs(destinationY - currDestinationY) < size;
 }
+function isCharacterWithin(targetLocation, size) {
+    if (character.map != targetLocation.map)
+        return false;
+    var destinationX = targetLocation.x;
+    var destinationY = targetLocation.y;
+    var currDestinationX = character.x;
+    var currDestinationY = character.y;
+    return Math.abs(destinationX - currDestinationX) < size && Math.abs(destinationY - currDestinationY) < size;
+}
 function changeServer(region, id) {
     if (character.controller)
         return; // don't let iframe characters switch servers
@@ -879,6 +888,144 @@ var CharacterRequirement = /** @class */ (function () {
 }());
 
 
+;// CONCATENATED MODULE: ./src/characters/zetd-priest.ts
+var zetd_priest_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+var ZetdPriest = /** @class */ (function (_super) {
+    zetd_priest_extends(ZetdPriest, _super);
+    function ZetdPriest() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    ZetdPriest.prototype.getName = function () {
+        return "Zetd";
+    };
+    ZetdPriest.prototype.tick = function () {
+        this.heal_party_members_percent(85);
+        for (var id in parent.entities) {
+            var current = parent.entities[id];
+            if (getCombatSystem().isBoss(current) && current.target && current.target != character.name && !current.s.cursed) {
+                useSkill(this.getSkills().curse, current);
+                break;
+            }
+        }
+        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y - 5); });
+    };
+    ZetdPriest.prototype.heal_party_members_percent = function (percent) {
+        // const condition_count = getPartySystem().checkConditionOnPartyAndCount(
+        // 	member => getHpPercent(member) < (percent - 10) / 100,
+        // 	() => { }
+        // );
+        // if (condition_count >= 2)
+        // 	getCombatSystem().useSkill("partyheal");
+        getPartySystem().useSkillOnParty(function (member) {
+            if (getHpPercent(member) < percent / 100) {
+                if (can_heal(member) && !is_on_cooldown("heal"))
+                    heal(member);
+                // else if (distance(character, member) > 150) {
+                // 	move(
+                // 		character.x+(member.x-character.x)/4,
+                // 		character.y+(member.y-character.y)/4
+                // 	);
+                // }
+            }
+        });
+    };
+    return ZetdPriest;
+}(CharacterFunction));
+
+
+;// CONCATENATED MODULE: ./src/characters/zettex-rogue.ts
+var zettex_rogue_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+var ZettexRogue = /** @class */ (function (_super) {
+    zettex_rogue_extends(ZettexRogue, _super);
+    function ZettexRogue() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    ZettexRogue.prototype.getName = function () {
+        return "Zettex";
+    };
+    ZettexRogue.prototype.setup = function () {
+        var _this = this;
+        _super.prototype.setup.call(this);
+        getCombatSystem().setPreAttack(function (tar) {
+            if (getHpPercent(tar) > 0.8)
+                useSkill(_this.getSkills().invis);
+        });
+    };
+    ZettexRogue.prototype.tick = function () {
+        buff(this.getSkills().rspeed);
+        buffEveryone(this.getSkills().rspeed);
+        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x - 5, character.y - 5); });
+    };
+    return ZettexRogue;
+}(CharacterFunction));
+
+
+;// CONCATENATED MODULE: ./src/lib/cms/cm-potion.ts
+
+
+function sendBringPotionCommand(name, pot, moveToMe, potQty) {
+    if (moveToMe === void 0) { moveToMe = true; }
+    if (potQty === void 0) { potQty = 2000; }
+    var payload = cms_cmBuilder(BRING_POTION, utils_getLocationSystem().getSmartMoveLocation());
+    payload["content"]["pot"] = pot;
+    payload["content"]["pot_qty"] = potQty;
+    payload["content"]["moveToMe"] = moveToMe;
+    cms_sendCharacterMessage(name, payload);
+}
+function bringPotionReply(name, data) {
+    if (!data.moveToMe) {
+        send_item(name, locate_item(data.pot), data.pot_qty);
+        return;
+    }
+    if (smart.moving && smart.map === data.map) {
+        var destinationX = data.x;
+        var destinationY = data.y;
+        var currDestinationX = smart.x;
+        var currDestinationY = smart.y;
+        if (Math.abs(destinationX - currDestinationX) < 100 || Math.abs(destinationY - currDestinationY) < 100) {
+            game_log("New destination too close, continuing to old one...");
+            return;
+        }
+    }
+    utils_getLocationSystem().smartMove(data, data.pot + "-" + name).then(function () {
+        send_item(name, locate_item(data.pot), data.pot_qty);
+    });
+}
+
 ;// CONCATENATED MODULE: ./src/lib/cms/cm-move.ts
 
 
@@ -928,31 +1075,6 @@ function sendInventoryData(name, data, isReply) {
 }
 function inventoryPreview(name, data) {
     preview_item(data.inventory);
-}
-
-;// CONCATENATED MODULE: ./src/lib/cms/cm-buff.ts
-
-
-
-function sendBuffRequest(name, buffName) {
-    var payload = cms_cmBuilder(BUFF_ME, utils_getLocationSystem().getSmartMoveLocation());
-    payload["content"]["buff"] = buffName;
-    cms_sendCharacterMessage(name, payload);
-}
-function handleBuffRequest(name, data) {
-    if (smart.moving) { // in case multiple people request at the same time
-        var destinationX = data.x;
-        var destinationY = data.y;
-        var currDestinationX = smart.x;
-        var currDestinationY = smart.y;
-        if (Math.abs(destinationX - currDestinationX) < 100 || Math.abs(destinationY - currDestinationY) < 100) {
-            game_log("New destination too close, continuing to old one...");
-            return;
-        }
-    }
-    utils_getLocationSystem().smartMove(data, "buff-" + name).then(function () {
-        useSkill(data.buff, get_player(name));
-    });
 }
 
 ;// CONCATENATED MODULE: ./src/lib/cms/cms.ts
@@ -1013,24 +1135,17 @@ window.on_cm = function (name, data) {
     CM_MAP[data.msg_type](name, data.content, true);
 };
 
-;// CONCATENATED MODULE: ./src/lib/cms/cm-potion.ts
+;// CONCATENATED MODULE: ./src/lib/cms/cm-buff.ts
 
 
-function sendBringPotionCommand(name, pot, moveToMe, potQty) {
-    if (moveToMe === void 0) { moveToMe = true; }
-    if (potQty === void 0) { potQty = 2000; }
-    var payload = cms_cmBuilder(BRING_POTION, utils_getLocationSystem().getSmartMoveLocation());
-    payload["content"]["pot"] = pot;
-    payload["content"]["pot_qty"] = potQty;
-    payload["content"]["moveToMe"] = moveToMe;
+
+function sendBuffRequest(name, buffName) {
+    var payload = cms_cmBuilder(BUFF_ME, utils_getLocationSystem().getSmartMoveLocation());
+    payload["content"]["buff"] = buffName;
     cms_sendCharacterMessage(name, payload);
 }
-function bringPotionReply(name, data) {
-    if (!data.moveToMe) {
-        send_item(name, locate_item(data.pot), data.pot_qty);
-        return;
-    }
-    if (smart.moving && smart.map === data.map) {
+function handleBuffRequest(name, data) {
+    if (smart.moving) { // in case multiple people request at the same time
         var destinationX = data.x;
         var destinationY = data.y;
         var currDestinationX = smart.x;
@@ -1040,19 +1155,25 @@ function bringPotionReply(name, data) {
             return;
         }
     }
-    utils_getLocationSystem().smartMove(data, data.pot + "-" + name).then(function () {
-        send_item(name, locate_item(data.pot), data.pot_qty);
+    utils_getLocationSystem().smartMove(data, "buff-" + name).then(function () {
+        useSkill(data.buff, get_player(name));
     });
 }
 
-;// CONCATENATED MODULE: ./src/systems/system.ts
+;// CONCATENATED MODULE: ./src/lib/state.ts
 
-var System = /** @class */ (function () {
-    function System() {
+var PREVIOUS_SYMBOL = createDivWithColor("&#9737;", "yellow", 10);
+var CURRENT_SYMBOL = createDivWithColor("&#9737;", "green", 10);
+var StateMachine = /** @class */ (function () {
+    function StateMachine(name, stateEnumAccessor, shouldLog) {
+        if (shouldLog === void 0) { shouldLog = false; }
+        this.name = name;
+        this.stateEnumAccessor = stateEnumAccessor;
+        this.shouldLog = shouldLog;
         this._stateLastSetTime = {};
         this._currentStateSetTime = new Date();
     }
-    Object.defineProperty(System.prototype, "previousState", {
+    Object.defineProperty(StateMachine.prototype, "previousState", {
         get: function () {
             return this._previousState;
         },
@@ -1062,14 +1183,14 @@ var System = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
-    Object.defineProperty(System.prototype, "previousStateSetDurationMs", {
+    Object.defineProperty(StateMachine.prototype, "previousStateSetDurationMs", {
         get: function () {
             return this._previousStateSetDurationMs;
         },
         enumerable: false,
         configurable: true
     });
-    Object.defineProperty(System.prototype, "currentState", {
+    Object.defineProperty(StateMachine.prototype, "currentState", {
         get: function () {
             return this._currentState;
         },
@@ -1081,18 +1202,20 @@ var System = /** @class */ (function () {
             this._currentState = newState;
             this._currentStateSetTime = new Date();
             this._stateLastSetTime[newState.toString()] = this._currentStateSetTime;
+            if (this.shouldLog)
+                this.logState();
         },
         enumerable: false,
         configurable: true
     });
-    Object.defineProperty(System.prototype, "currentStateSetTime", {
+    Object.defineProperty(StateMachine.prototype, "currentStateSetTime", {
         get: function () {
             return this._currentStateSetTime;
         },
         enumerable: false,
         configurable: true
     });
-    System.prototype.getStateLastSetTime = function (state, timeIn) {
+    StateMachine.prototype.getStateLastSetTime = function (state, timeIn) {
         if (timeIn === void 0) { timeIn = TimeIn.SECONDS; }
         var lastSetTime = this._stateLastSetTime[state.toString()];
         if (!lastSetTime) {
@@ -1100,129 +1223,38 @@ var System = /** @class */ (function () {
         }
         return sinceConvert(this._stateLastSetTime[state.toString()], timeIn);
     };
+    Object.defineProperty(StateMachine.prototype, "previousStateDisplay", {
+        get: function () {
+            return this.stateEnumAccessor(this._previousState);
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(StateMachine.prototype, "currentStateDisplay", {
+        get: function () {
+            return this.stateEnumAccessor(this._currentState);
+        },
+        enumerable: false,
+        configurable: true
+    });
+    StateMachine.prototype.logState = function () {
+        if (this.previousState && this.currentState) {
+            getLoggingSystem().addLogMessage(PREVIOUS_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.previousState) + "s <br>" + this.previousStateDisplay, "t_previous_state", 60000);
+            getLoggingSystem().addLogMessage(CURRENT_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.currentState) + "s <br>" + this.currentStateDisplay, "t_current_state", 60000);
+        }
+    };
+    return StateMachine;
+}());
+
+
+;// CONCATENATED MODULE: ./src/systems/system.ts
+var System = /** @class */ (function () {
+    function System() {
+    }
     System.prototype.beforeBusy = function () { };
     System.prototype.tick = function () { };
     return System;
 }());
-
-var Stateless;
-(function (Stateless) {
-})(Stateless || (Stateless = {}));
-
-;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
-var inventory_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-var C_DO_NOT_STORE_ITEM = ["pot", "cscroll", "scroll0", "scroll1", "tracker", "stand", "lostearring"];
-var InventoryState;
-(function (InventoryState) {
-})(InventoryState || (InventoryState = {}));
-var InventorySystem = /** @class */ (function (_super) {
-    inventory_extends(InventorySystem, _super);
-    function InventorySystem() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.potQtyThreshold = 100;
-        _this.hpPotName = "hpot1";
-        _this.mpPotName = "mpot1";
-        return _this;
-    }
-    InventorySystem.prototype.getName = function () {
-        return "InventorySystem";
-    };
-    InventorySystem.prototype.getLogIcon = function () {
-        return createDivWithColor("&#128093;", "", 10);
-    };
-    InventorySystem.prototype.setPotQtyThreshold = function (num) {
-        this.potQtyThreshold = num;
-        return this;
-    };
-    InventorySystem.prototype.restockPotionsAt = function (pot, useCmRestock) {
-        var _this = this;
-        if (locate_item(pot) === -1 || character.items[locate_item(pot)].q < this.potQtyThreshold) {
-            if (useCmRestock) {
-                sendBringPotionCommand(InventorySystem.merchantName, pot);
-            }
-            else {
-                utils_getLocationSystem().smartMove("town", "town").then(function () {
-                    buy(pot, _this.potQtyThreshold);
-                });
-            }
-        }
-    };
-    InventorySystem.prototype.storage = function (threshold, storeCond) {
-        if (threshold === void 0) { threshold = 42; }
-        if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
-        var num_items = this.inventorySize();
-        if (num_items >= threshold) {
-            return utils_getLocationSystem().smartMove("bank", "bank").then(function () {
-                for (var i = 0; i < character.items.length; i++) {
-                    var item = character.items[i];
-                    if (!item)
-                        continue;
-                    if (storeCond(item)) {
-                        bank_store(i);
-                    }
-                }
-            });
-        }
-    };
-    InventorySystem.prototype.inventorySize = function () {
-        var num_items = 0;
-        for (var i in character.items)
-            if (character.items[i])
-                num_items++;
-        return num_items;
-    };
-    InventorySystem.prototype.findItem = function (params, items) {
-        if (items === void 0) { items = character.items; }
-        var foundItems = this.findItems(params, items);
-        return foundItems ? foundItems[0] : -1;
-    };
-    InventorySystem.prototype.findItems = function (params, items) {
-        if (items === void 0) { items = character.items; }
-        var foundItems = [];
-        for (var i = 0; i < items.length; i++) {
-            if (!items[i])
-                continue;
-            if (params.name && items[i].name != params.name)
-                continue;
-            if (params.maxRefine && items[i].level >= params.maxRefine)
-                continue;
-            if (params.level && items[i].level != params.level)
-                continue;
-            foundItems.push(i);
-        }
-        return (foundItems.length === 0) ? null : foundItems;
-    };
-    InventorySystem.prototype.sendItems = function (name, startIdx, endIdx) {
-        if (startIdx === void 0) { startIdx = 0; }
-        if (endIdx === void 0) { endIdx = 42; }
-        for (var i = startIdx; i < endIdx; i++) {
-            if (!character.items[i]
-                || character.items[i].name === "tracker"
-                || character.items[i].name.includes("pot"))
-                continue;
-            send_item(name, i, character.items[i].q);
-        }
-    };
-    InventorySystem.merchantName = "Zetchant";
-    return InventorySystem;
-}(System));
 
 
 ;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
@@ -1241,6 +1273,7 @@ var combatSystem_extends = (undefined && undefined.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+
 
 
 var C_IGNORE_MONSTER = ["Target Automatron"];
@@ -1266,13 +1299,21 @@ var CombatState;
 var CombatSystem = /** @class */ (function (_super) {
     combatSystem_extends(CombatSystem, _super);
     function CombatSystem() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
+        var _this = _super.call(this) || this;
         _this.stuckThreshold = 10;
         _this.stuck = 0;
         _this.preAttackFunc = function () { };
         _this.postAttackFunc = function () { };
+        _this._stateMachine = new StateMachine(_this.getLogIcon(), function (state) { return CombatState[state]; });
         return _this;
     }
+    Object.defineProperty(CombatSystem.prototype, "stateMachine", {
+        get: function () {
+            return this._stateMachine;
+        },
+        enumerable: false,
+        configurable: true
+    });
     CombatSystem.prototype.getName = function () {
         return "CombatSystem";
     };
@@ -1328,31 +1369,31 @@ var CombatSystem = /** @class */ (function (_super) {
         // and i switch target which will switch servers on me
         if (worldBossTarget) {
             target = worldBossTarget;
-            this.currentState = CombatState.WB;
+            this._stateMachine.currentState = CombatState.WB;
         }
         else if (monsterTargetingMe) {
             target = monsterTargetingMe;
-            this.currentState = CombatState.ATK_ME;
+            this._stateMachine.currentState = CombatState.ATK_ME;
         }
         else if (bossTarget) {
             target = bossTarget;
-            this.currentState = CombatState.B;
+            this._stateMachine.currentState = CombatState.B;
         }
         else if (freeBeatableTarget) {
             target = freeBeatableTarget;
-            this.currentState = CombatState.EASY;
+            this._stateMachine.currentState = CombatState.EASY;
         }
         else if (partyLeaderTarget) {
             target = partyLeaderTarget;
-            this.currentState = CombatState.FOLLOW;
+            this._stateMachine.currentState = CombatState.FOLLOW;
         }
         else {
             // 0 - Find nearest monster
             target = this.getNearestMonster();
-            this.currentState = CombatState.NEAR;
+            this._stateMachine.currentState = CombatState.NEAR;
         }
         if (!target) {
-            this.currentState = CombatState.NO_ENEMY;
+            this._stateMachine.currentState = CombatState.NO_ENEMY;
         }
         return target;
     };
@@ -1508,98 +1549,8 @@ var NoOpCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
-;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
-var SmartMoveLocation = /** @class */ (function () {
-    function SmartMoveLocation(x, y, map, name) {
-        this.x = x;
-        this.y = y;
-        this.map = map;
-        this.name = name;
-    }
-    SmartMoveLocation.create = function (x, y, map, name) {
-        return new SmartMoveLocation(x, y, map, name);
-    };
-    SmartMoveLocation.createName = function (name) {
-        return new SmartMoveLocation(null, null, null, name);
-    };
-    SmartMoveLocation.prototype.get = function () {
-        if (!this.x && !this.y && !this.map)
-            return this.name;
-        return this;
-    };
-    return SmartMoveLocation;
-}());
-
-var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
-var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
-var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
-var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
-
-;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
-var locationSystem_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-var LocationState;
-(function (LocationState) {
-})(LocationState || (LocationState = {}));
-var LocationSystem = /** @class */ (function (_super) {
-    locationSystem_extends(LocationSystem, _super);
-    function LocationSystem() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    LocationSystem.prototype.getName = function () {
-        return "LocationSystem";
-    };
-    LocationSystem.prototype.getLogIcon = function () {
-        return createDivWithColor("&#128099;", "purple", 10);
-    };
-    LocationSystem.prototype.smartMove = function (dest, destinationName) {
-        if (isStandOpen())
-            close_stand();
-        this.destination = dest;
-        this.destinationName = destinationName;
-        this.setLocation(destinationName);
-        return smart_move(dest);
-    };
-    LocationSystem.prototype.getSmartMoveLocation = function (smartMoveLoc) {
-        return smartMoveLoc ? smartMoveLoc : {
-            map: character.map,
-            x: character.real_x - 5,
-            y: character.real_y + 5,
-            smart: smart
-        };
-    };
-    LocationSystem.prototype.setLocation = function (location) {
-        parent.currentLocation = location;
-    };
-    return LocationSystem;
-}(System));
-
-var NoOpLocation = /** @class */ (function (_super) {
-    locationSystem_extends(NoOpLocation, _super);
-    function NoOpLocation() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    return NoOpLocation;
-}(LocationSystem));
-
-
-;// CONCATENATED MODULE: ./src/systems/location/soloLocation.ts
-var soloLocation_extends = (undefined && undefined.__extends) || (function () {
+;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
+var inventory_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -1617,791 +1568,98 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-
-var whitelistedWorldBosses = ["snowman"];
-var worldBossSmartMoveLocation = {
-    "snowman": SNOWMAN
-};
-var SoloLocation = /** @class */ (function (_super) {
-    soloLocation_extends(SoloLocation, _super);
-    function SoloLocation(mobDestination, locationChangeIntervalMin) {
-        var _this = _super.call(this) || this;
-        _this.mobDestination = mobDestination;
-        _this.locationChangeIntervalMin = locationChangeIntervalMin;
-        _this.lastDestinationChangeAt = pastDatePlusMins(locationChangeIntervalMin + 1);
-        parent.currentLocation = "?";
+var C_DO_NOT_STORE_ITEM = ["pot", "cscroll", "scroll0", "scroll1", "tracker", "stand", "lostearring"];
+var InventorySystem = /** @class */ (function (_super) {
+    inventory_extends(InventorySystem, _super);
+    function InventorySystem() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.potQtyThreshold = 100;
+        _this.hpPotName = "hpot1";
+        _this.mpPotName = "mpot1";
         return _this;
     }
-    SoloLocation.prototype.tick = function () {
-        // TODO: grinch is special, remove after event is over
-        var grinch = getAlWorldBoss("grinch");
-        if (parent.S.grinch.live) {
-            if (!this.previousGrinchLocation) {
-                this.previousGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
-            }
-            if (secSince(this.lastDestinationChangeAt) > 10 && getCombatSystem().currentState != CombatState.WB) {
-                var currentGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
-                if (!smart.moving || !isWithinSquare(this.previousGrinchLocation, currentGrinchLocation, 200)) {
-                    this.smartMove(parent.S["grinch"], "grinch");
-                    this.lastDestinationChangeAt = new Date();
-                }
-                this.previousGrinchLocation = currentGrinchLocation;
-            }
-        }
-        else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
-            changeServer(grinch.serverRegion, grinch.serverIdentifier);
-        }
-        // Engaged in boss/worldboss, do not move
-        else if (getCombatSystem().currentState === CombatState.WB || getCombatSystem().currentState === CombatState.B) {
-            if (sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS) > 10) {
-                this.forceNextLocation();
-            }
-        }
-        else if (!character.s.holidayspirit) {
-            this.smartMove("town", "xmas-buff").then(function () {
-                parent.socket.emit("interaction", { type: "newyear_tree" });
-            });
-            return;
-        }
-        else {
-            var sinceWb = getCombatSystem().getStateLastSetTime(CombatState.WB);
-            var sinceB = getCombatSystem().getStateLastSetTime(CombatState.B);
-            if (sinceWb > 30 && sinceB > 30) {
-                this.moveToNextLocation();
-            }
-            else {
-                debugLog("sinceWb: " + sinceWb + " | sinceB: " + sinceB, "location_debug!");
-            }
-        }
+    InventorySystem.prototype.getName = function () {
+        return "InventorySystem";
     };
-    SoloLocation.prototype.forceNextLocation = function () {
-        this.lastDestinationChangeAt = pastDatePlusMins(this.locationChangeIntervalMin + 1);
+    InventorySystem.prototype.getLogIcon = function () {
+        return createDivWithColor("&#128093;", "", 10);
     };
-    SoloLocation.prototype.moveToNextLocation = function () {
-        var nextLocation;
-        var bossSpawningSoon = false;
-        // always goes to bosses in order
-        for (var boss in whitelistedWorldBosses) {
-            var worldBossName = whitelistedWorldBosses[boss];
-            var worldBoss = isWorldBossReady(worldBossName);
-            if (!worldBossSmartMoveLocation[worldBossName])
-                debugLog("No SmartLocation found for " + worldBossName);
-            if (worldBoss) {
-                // TODO: make this prettier?
-                if (worldBoss.serverIdentifier != server.id || worldBoss.serverRegion != server.region) {
-                    changeServer(worldBoss.serverRegion, worldBoss.serverIdentifier);
-                    return;
-                }
-                nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
-                this.nextLocationName = worldBossName;
-                this.forceNextLocation();
-                bossSpawningSoon = true;
-            }
-        }
-        // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
-        if (!bossSpawningSoon && ("PVP" != server.id || "US" != server.region)) {
-            changeServer("US", "PVP");
-        }
-        if (!nextLocation) {
-            if (typeof this.mobDestination === "string") {
-                nextLocation = this.nextLocationName = this.mobDestination;
-            }
-            else {
-                nextLocation = this.mobDestination.get();
-                this.nextLocationName = this.mobDestination.name;
-            }
-        }
-        if (this.nextLocationName === parent.currentLocation) {
-            return;
-        }
-        if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
-            this.smartMove(nextLocation, this.nextLocationName);
-            this.lastDestinationChangeAt = new Date();
-        }
-    };
-    return SoloLocation;
-}(LocationSystem));
-
-
-;// CONCATENATED MODULE: ./src/systems/debug/logging.ts
-var logging_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-
-var C_MESSAGE_TYPE_MERCHANT = "t_merchant";
-var C_MESSAGE_TYPE_STALL = "t_stall";
-var C_MESSAGE_TYPE_GOLD = "t_gold";
-var C_MESSAGE_TYPE_COMPOUND = "t_compound";
-var C_MESSAGE_TYPE_UPGRADE = "t_upgrade";
-var C_MESSAGE_TYPE_WALKING = "t_walking";
-var C_MESSAGE_TYPE_TARGET = "t_target";
-var C_ICON_DIV = createDivWithColor("@", "purple");
-var NL = "<br>";
-var LoggingSystem = /** @class */ (function (_super) {
-    logging_extends(LoggingSystem, _super);
-    function LoggingSystem() {
-        var _this = _super.call(this) || this;
-        _this.messageQueue = {};
-        _this._logMovement = true;
-        _this._logStatus = true;
-        _this._logMoney = false;
-        _this._logInventory = true;
-        _this._logCombat = true;
-        _this._logLocation = true;
-        _this._logWorldBosses = true;
-        _this._itemsShownCount = 0;
-        return _this;
-    }
-    LoggingSystem.prototype.setLogMovement = function (value) {
-        this._logMovement = value;
+    InventorySystem.prototype.setPotQtyThreshold = function (num) {
+        this.potQtyThreshold = num;
         return this;
     };
-    LoggingSystem.prototype.setLogStatus = function (value) {
-        this._logStatus = value;
-        return this;
-    };
-    LoggingSystem.prototype.setLogMoney = function (value) {
-        this._logMoney = value;
-        return this;
-    };
-    LoggingSystem.prototype.setLogInventory = function (value) {
-        this._logInventory = value;
-        return this;
-    };
-    LoggingSystem.prototype.setLogCombat = function (value) {
-        this._logCombat = value;
-        return this;
-    };
-    LoggingSystem.prototype.setLogLocation = function (value) {
-        this._logLocation = value;
-        return this;
-    };
-    LoggingSystem.prototype.setLogWorldBosses = function (value) {
-        this._logWorldBosses = value;
-        return this;
-    };
-    LoggingSystem.prototype.getName = function () {
-        return "LoggingSystem";
-    };
-    LoggingSystem.prototype.getLogIcon = function () {
-        throw new Error("Method not implemented.");
-    };
-    LoggingSystem.prototype.beforeBusy = function () {
-        if (!canCall("displayLogMessages", this.getName(), 1000))
-            return;
-        this.displayLogMessages();
-    };
-    LoggingSystem.prototype.tick = function () { };
-    LoggingSystem.prototype.displayLogMessages = function () {
-        // Status Logging
-        var hpDiv = createDivWithColor(Math.trunc(getHpPercent() * 100) + "%", "indianred");
-        var mpDiv = createDivWithColor(Math.trunc(getMpPercent() * 100) + "%", "lightblue");
-        var lvlDiv = createDivWithColor("Lv" + character.level + " (" + Math.trunc(character.xp / character.max_xp * 100) + "%)", "greenyellow");
-        var statusLogging = !this._logStatus ? "" : hpDiv + "/" + mpDiv + " | " + lvlDiv;
-        // Money Logging
-        var moneyLogging = !this._logMoney ? "" : NL + "&#128184; " + character.gold;
-        // Inventory Logging
-        var inventoryLogging = "";
-        if (this._logInventory) {
-            var inventorySize = getInventorySystem().inventorySize();
-            inventoryLogging = "" + NL + getInventorySystem().getLogIcon() + " " + inventorySize + ": ";
-            var itemsSeen = 0;
-            for (var i = 0; i < character.items.length; i++) {
-                var maybeItem = character.items[i];
-                if (!maybeItem)
-                    continue;
-                itemsSeen++;
-                if (itemsSeen <= this._itemsShownCount)
-                    continue;
-                inventoryLogging += maybeItem.name;
-                this._itemsShownCount++;
-                break;
-            }
-            if (this._itemsShownCount >= inventorySize) {
-                this._itemsShownCount = 0;
-            }
-        }
-        // Combat Logging
-        var currentTarget = getCombatSystem().currentTarget;
-        var combatLogIcon = getCombatSystem().getLogIcon();
-        var combatLogging = !this._logCombat ? "" : "" + NL + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
-        // Movement Logging
-        var movementLogging = !this._logMovement || !smart.moving ? "" : NL + (utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName);
-        // Location Logging
-        var locationLogging = "";
-        if (this._logLocation) {
-            var locSystem = utils_getLocationSystem();
-            var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
-            locationLogging = "" + parent.currentLocation;
-            if (parent.currentLocation != locSystem.nextLocationName)
-                locationLogging += "->" + locSystem.nextLocationName;
-            locationLogging = "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
-        }
-        // World Boss Logging
-        var wbLogging = "";
-        if (this._logWorldBosses) {
-            var trackedWorldBosses_1 = ["grinch"];
-            whitelistedWorldBosses.forEach(function (wb) { return trackedWorldBosses_1.push(wb); });
-            for (var i = 0; i < trackedWorldBosses_1.length; i++) {
-                var wbName = trackedWorldBosses_1[i];
-                var worldBoss = void 0, isLive = void 0, timeRemaining = void 0;
-                var parentWorldBoss = getParentWorldBoss(wbName);
-                var alWorldBoss = getAlWorldBoss(wbName);
-                // Check for live status first
-                if (parentWorldBoss && parentWorldBoss.live) {
-                    worldBoss = parentWorldBoss;
-                    isLive = true;
-                }
-                else if (alWorldBoss && alWorldBoss.live) {
-                    worldBoss = alWorldBoss;
-                    isLive = true;
-                }
-                else {
-                    // check remaining timer on both bosses
-                    var parentTts = timeTillWorldBoss(parentWorldBoss);
-                    var alTts = timeTillWorldBoss(alWorldBoss);
-                    worldBoss = parentTts < alTts ? parentWorldBoss : alWorldBoss;
-                    timeRemaining = parentTts < alTts ? parentTts : alTts;
-                }
-                if (isLive) {
-                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
-                }
-                else if (timeRemaining) {
-                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
-                }
-                else {
-                    wbLogging += NL + createDivWithColor("[???] " + wbName + ": N/A", "red");
-                }
-            }
-        }
-        var display_msg = "" + statusLogging + moneyLogging + inventoryLogging + combatLogging + locationLogging + movementLogging + wbLogging;
-        for (var k in this.messageQueue) {
-            display_msg += NL;
-            display_msg += this.messageQueue[k].message;
-        }
-        if (display_msg === "")
-            return;
-        set_message(display_msg);
-        for (var k in this.messageQueue) {
-            if (mssince(this.messageQueue[k].date) > this.messageQueue[k].ttl) {
-                delete this.messageQueue[k];
-            }
-        }
-    };
-    LoggingSystem.prototype.addLogMessage = function (message, msg_type, ttlMs) {
-        if (ttlMs === void 0) { ttlMs = 1000; }
-        if (!msg_type) {
-            log(message);
-            return;
-        }
-        this.messageQueue[msg_type] = { message: message, date: new Date(), ttl: ttlMs };
-    };
-    return LoggingSystem;
-}(System));
-
-
-;// CONCATENATED MODULE: ./src/characters/zetchant-merchant.ts
-var zetchant_merchant_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-
-
-// Merchant
-var C_MERCHANT_STAND_LOCATION = {
-    map: "main",
-    x: 130,
-    y: 0
-};
-var C_MERCHANT_SELL_ITEM_VALUE_MULT = 4;
-var C_MERCHANT_OPENED_BANKS = 4;
-var ZetchantMerchant = /** @class */ (function (_super) {
-    zetchant_merchant_extends(ZetchantMerchant, _super);
-    function ZetchantMerchant(skills) {
-        var _this = _super.call(this, skills) || this;
-        _this.UPGRADE_LIST = [
-            new UpgradeItem("wcap", 7),
-            new UpgradeItem("wshoes", 7),
-            new UpgradeItem("wbreeches", 7),
-            new UpgradeItem("wattire", 7),
-            new UpgradeItem("wgloves", 7),
-            new UpgradeItem("gloves1", 7),
-            new UpgradeItem("coat1", 7),
-            new UpgradeItem("pants1", 7),
-            new UpgradeItem("shoes1", 7),
-            new UpgradeItem("helmet1", 7),
-            new UpgradeItem("slimestaff", 7),
-            new UpgradeItem("phelmet", 7),
-            new UpgradeItem("sshield", 7),
-            new UpgradeItem("firestaff", 7),
-            new UpgradeItem("fireblade", 7),
-            new UpgradeItem("stinger", 8),
-            new UpgradeItem("mcape", 6),
-            new UpgradeItem("ringsj", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("wbook0", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("strring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("intring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("dexring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("vitring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("strearring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("intearring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("dexearring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("vitearring", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("dexamulet", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("stramulet", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("vitamulet", 3, UpgradeType.COMPOUND),
-            new UpgradeItem("intamulet", 3, UpgradeType.COMPOUND),
-        ];
-        _this.VEND_LIST = [
-        // { level: 3, name: "ringsj" },
-        // { level: 3, name: "hpamulet" },
-        // { level: 3, name: "hpbelt" },
-        ];
-        _this.SELL_LIST = [
-            { name: "xmace" },
-            { name: "iceskates" },
-        ];
-        _this.UPGRADE_QUEUE = [];
-        _this.SCROLL_NPC = find_npc(G.npcs.scrolls.id);
-        _this.upgradeAttempts = 0;
-        _this.hasRegisteredItems = false;
-        return _this;
-    }
-    ZetchantMerchant.prototype.getName = function () {
-        return "Zetchant";
-    };
-    ZetchantMerchant.prototype.setup = function () {
-        _super.prototype.setup.call(this);
-        setInterval(function () {
-            game_log("checking giveaways...");
-            zGiveaway();
-        }, 30 * 60 * 1000); // 30 minutes
-    };
-    ZetchantMerchant.prototype.beforeBusy = function () {
-        _super.prototype.beforeBusy.call(this);
-        buff(this.getSkills().mluck);
-        buffEveryone(this.getSkills().mluck, minutesInMs(45));
-        if (this.UPGRADE_QUEUE.length) {
-            getLoggingSystem().addLogMessage("&#128296; " + this.UPGRADE_QUEUE.length + "-" + this.UPGRADE_QUEUE[0].name, C_MESSAGE_TYPE_UPGRADE);
-        }
-    };
-    ZetchantMerchant.prototype.tick = function () {
-        // if (character.map === "mansion") {
-        // 	const lostearringidx = getInventorySystem().findItem({name: "lostearring"});
-        // 	if (lostearringidx != -1) {
-        // 		getLocationSystem().smartMove({ "x": "0", "y": "-283", "map": "mansion"}).then(() => {
-        // 			exchange(lostearringidx);
-        // 		});
-        // 		return;				
-        // 	}
-        // }
-        if (this.UPGRADE_QUEUE.length === 0) {
-            this.sellItems();
-            if (!isStandOpen()) {
-                this.openStand();
-            }
-            else if (!this.hasRegisteredItems) {
-                this.registerStandItems(this.VEND_LIST);
-            }
-            else if (this.checkBankRoutine()) {
-                this.bankItems(this.UPGRADE_LIST, this.VEND_LIST);
-            }
-            else {
-                this.checkUpgradeItems();
-            }
-        }
-        else {
-            this.processUpgradeItems();
-        }
-    };
-    ZetchantMerchant.prototype.sellItems = function () {
-        var sellItems = [];
-        for (var i = 0; i < character.items.length; i++) {
-            var item = character.items[i];
-            if (!item)
-                continue;
-            for (var j = 0; j < this.SELL_LIST.length; j++) {
-                if (item.name === this.SELL_LIST[j].name)
-                    sellItems.push(i);
-            }
-        }
-        if (sellItems.length) {
-            utils_getLocationSystem().smartMove("town", "town").then(function () {
-                sellItems.forEach(function (idx) { return sell(idx); });
-            });
-        }
-    };
-    // TODO this is kind of dupe code from bank items
-    ZetchantMerchant.prototype.checkBankRoutine = function () {
-        var _loop_1 = function (i) {
-            var item = character.items[i];
-            if (!item)
-                return "continue";
-            if (C_DO_NOT_STORE_ITEM.find(function (element) { var _a; return (_a = item.name) === null || _a === void 0 ? void 0 : _a.includes(element); }))
-                return "continue";
-            var shouldBank = true;
-            for (var i_1 in this_1.UPGRADE_LIST) {
-                var upgradeItem = this_1.UPGRADE_LIST[i_1];
-                if (upgradeItem.name === item.name) {
-                    shouldBank = false;
-                    break;
-                }
-            }
-            for (var i_2 in this_1.VEND_LIST) {
-                var v_item = this_1.VEND_LIST[i_2];
-                if (v_item.name === item.name) {
-                    shouldBank = false;
-                    break;
-                }
-            }
-            if (shouldBank) {
-                game_log("Will bank " + item.name);
-                return { value: true };
-            }
-        };
-        var this_1 = this;
-        for (var i = 0; i < character.items.length; i++) {
-            var state_1 = _loop_1(i);
-            if (typeof state_1 === "object")
-                return state_1.value;
-        }
-        return false;
-    };
-    ZetchantMerchant.prototype.processUpgradeItems = function () {
+    InventorySystem.prototype.restockPotionsAt = function (pot, useCmRestock) {
         var _this = this;
-        character.q.custom_upgrading = true;
-        var upgradeItem;
-        // this is still nice because we could upgrade items multiple times
-        while (!upgradeItem && this.UPGRADE_QUEUE.length) {
-            upgradeItem = this.UPGRADE_QUEUE[0];
-            if (getInventorySystem().findItem({ name: upgradeItem.name }) === -1) {
-                this.UPGRADE_QUEUE.shift();
-                upgradeItem = null;
+        if (locate_item(pot) === -1 || character.items[locate_item(pot)].q < this.potQtyThreshold) {
+            if (useCmRestock) {
+                sendBringPotionCommand(InventorySystem.merchantName, pot);
             }
-        }
-        if (!upgradeItem)
-            return; // no items were found - upgrade queue is now 0
-        if (distance(character, this.SCROLL_NPC) > 100) {
-            utils_getLocationSystem().smartMove("scrolls", "scrolls");
-            return;
-        }
-        buff(this.getSkills().massproduction);
-        if (upgradeItem.upgradeType === UpgradeType.COMPOUND) {
-            this.smartCompound(upgradeItem, function () { _this.upgrade_success_handler(); }, function (data) { _this.upgrade_failure_handler(data); });
-        }
-        else {
-            this.smartUpgrade(upgradeItem, function () { _this.upgrade_success_handler(); }, function (data) { _this.upgrade_failure_handler(data); });
-        }
-        delete character.q.custom_upgrading;
-    };
-    ZetchantMerchant.prototype.checkUpgradeItems = function () {
-        for (var i = 0; i < this.UPGRADE_LIST.length; i++) {
-            if (this.hasItem(this.UPGRADE_LIST[i])) {
-                this.UPGRADE_QUEUE.push(this.UPGRADE_LIST[i]);
-            }
-        }
-        if (this.UPGRADE_QUEUE.length && getInventorySystem().inventorySize() < 40) {
-            this.getItemsFromBank(this.UPGRADE_QUEUE);
-        }
-    };
-    ZetchantMerchant.prototype.upgrade_success_handler = function () {
-        this.upgradeAttempts = 0;
-    };
-    ZetchantMerchant.prototype.upgrade_failure_handler = function (data) {
-        if (data.reason === "no_item" && this.upgradeAttempts > 2) {
-            this.UPGRADE_QUEUE.shift();
-            this.upgradeAttempts = 0;
-        }
-        this.upgradeAttempts++;
-    };
-    ZetchantMerchant.prototype.smartUpgrade = function (upgradeItem, scb, fcb) {
-        var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
-            : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
-        var grade = item_grade(character.items[item_idx]);
-        var scroll_idx = locate_item("scroll" + grade);
-        getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, C_MESSAGE_TYPE_UPGRADE);
-        var upgrade_promise = upgrade(item_idx, scroll_idx);
-        upgrade_promise.then(function (data) { return scb(data); }, function (data) {
-            game_log("[" + upgradeItem.name + "]: " + data.reason);
-            if (data.reason === "no_scroll" && upgradeItem.autoBuy)
-                buy("scroll" + grade);
-            fcb(data);
-        });
-        return upgrade_promise;
-    };
-    ZetchantMerchant.prototype.smartCompound = function (upgradeItem, scb, fcb) {
-        var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
-        if (!items) {
-            fcb({ reason: "no_item" });
-            return;
-        }
-        var item_matrix = [];
-        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-            item_matrix.push([]);
-            for (var i = 0; i < items.length; i++) {
-                if (character.items[items[i]].level === i_lvl)
-                    item_matrix[i_lvl].push(items[i]);
-            }
-        }
-        var grade = 0;
-        var compound_promise = null;
-        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-            if (item_matrix[i_lvl].length >= 3) {
-                items = item_matrix[i_lvl];
-                grade = item_grade(character.items[items[0]]);
-                compound_promise = compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
-                compound_promise.then(function (data) { return scb(data); }, function (data) {
-                    var hasScroll = locate_item("cscroll" + grade) != -1;
-                    game_log("[" + upgradeItem.name + "] : " + (hasScroll ? data.reason : "no_scroll") + " (" + locate_item("cscroll" + grade) + "|" + upgradeItem.autoBuy + ") " + items);
-                    if (!hasScroll && upgradeItem.autoBuy) {
-                        buy("cscroll" + grade);
-                    }
+            else {
+                utils_getLocationSystem().smartMove("town", "town").then(function () {
+                    buy(pot, _this.potQtyThreshold);
                 });
-                break;
-            }
-        }
-        if (!compound_promise) {
-            fcb({ reason: "no_item" });
-            return;
-        }
-        getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, C_MESSAGE_TYPE_COMPOUND);
-        return compound_promise;
-    };
-    ZetchantMerchant.prototype.hasItem = function (upgradeItem) {
-        if (upgradeItem.upgradeType == UpgradeType.COMPOUND) {
-            var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
-            if (!items)
-                return false;
-            var item_matrix = [];
-            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-                item_matrix.push([]);
-                for (var i = 0; i < items.length; i++) {
-                    if (character.items[items[i]].level === i_lvl)
-                        item_matrix[i_lvl].push(items[i]);
-                }
-            }
-            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-                if (item_matrix[i_lvl].length >= 3) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        else {
-            var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
-                : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
-            return item_idx != -1;
-        }
-    };
-    ZetchantMerchant.prototype.openStand = function () {
-        utils_getLocationSystem().smartMove(C_MERCHANT_STAND_LOCATION, "open_stand").then(function () {
-            open_stand(0);
-        });
-    };
-    ZetchantMerchant.prototype.getStandSlots = function () {
-        if (!isStandOpen())
-            return null;
-        var stand_slots = [];
-        for (var i = 1; i <= 16; i++) {
-            var slot_name = "trade" + i;
-            if (!character.slots[slot_name]) {
-                stand_slots.push(slot_name);
-            }
-        }
-        return stand_slots;
-    };
-    ZetchantMerchant.prototype.registerStandItems = function (items, price) {
-        var open_stand_slots = this.getStandSlots();
-        this.hasRegisteredItems = true;
-        if (!open_stand_slots || open_stand_slots.length === 0)
-            return;
-        var stand_idx = 0;
-        for (var i in items) {
-            var item = items[i];
-            var vend_item_idx = getInventorySystem().findItem({ name: item.name, level: item.level });
-            if (vend_item_idx != -1) {
-                var list_price = price ? price : item_value(item) * C_MERCHANT_SELL_ITEM_VALUE_MULT;
-                trade(vend_item_idx, open_stand_slots[stand_idx++], list_price);
-                log("Listing " + item.name + " for " + list_price + " gold");
             }
         }
     };
-    ZetchantMerchant.prototype.bankItems = function (upgradeItems, vendItems) {
-        return getInventorySystem().storage(0, function (item) {
-            if (C_DO_NOT_STORE_ITEM.find(function (element) { var _a; return (_a = item.name) === null || _a === void 0 ? void 0 : _a.includes(element); }))
-                return false;
-            for (var i in upgradeItems) {
-                var upgradeItem = upgradeItems[i];
-                if (upgradeItem.name === item.name && upgradeItem.maxRefine != item.level)
-                    return false;
-            }
-            for (var i in vendItems) {
-                var v_item = vendItems[i];
-                if (v_item.name === item.name && v_item.level === item.level)
-                    return false;
-            }
-            return true;
-        });
-    };
-    ZetchantMerchant.prototype.getItemsFromBank = function (items) {
-        utils_getLocationSystem().smartMove("bank", "bank").then(function () {
-            // TODO race condition when entering bank, use states here instead
-            for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
-                var packName = "items" + packNum;
-                if (!character.bank[packName])
-                    continue;
-                for (var i = 0; i < items.length; i++) {
-                    var item = items[i];
-                    var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
-                    game_log("Checked " + item.name + " on " + packName + ": " + itemIdxs);
-                    if (itemIdxs) {
-                        for (var idx = 0; idx < itemIdxs.length; idx++) {
-                            bank_retrieve(packName, itemIdxs[idx]);
-                        }
+    InventorySystem.prototype.storage = function (threshold, storeCond) {
+        if (threshold === void 0) { threshold = 42; }
+        if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
+        var num_items = this.inventorySize();
+        if (num_items >= threshold) {
+            return utils_getLocationSystem().smartMove("bank", "bank").then(function () {
+                for (var i = 0; i < character.items.length; i++) {
+                    var item = character.items[i];
+                    if (!item)
+                        continue;
+                    if (storeCond(item)) {
+                        bank_store(i);
                     }
                 }
-            }
-        });
-    };
-    return ZetchantMerchant;
-}(CharacterFunction));
-
-
-;// CONCATENATED MODULE: ./src/characters/zetd-priest.ts
-var zetd_priest_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-var ZetdPriest = /** @class */ (function (_super) {
-    zetd_priest_extends(ZetdPriest, _super);
-    function ZetdPriest() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    ZetdPriest.prototype.getName = function () {
-        return "Zetd";
-    };
-    ZetdPriest.prototype.tick = function () {
-        this.heal_party_members_percent(85);
-        for (var id in parent.entities) {
-            var current = parent.entities[id];
-            if (getCombatSystem().isBoss(current) && current.target && current.target != character.name && !current.s.cursed) {
-                useSkill(this.getSkills().curse, current);
-                break;
-            }
+            });
         }
-        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y - 5); });
     };
-    ZetdPriest.prototype.heal_party_members_percent = function (percent) {
-        // const condition_count = getPartySystem().checkConditionOnPartyAndCount(
-        // 	member => getHpPercent(member) < (percent - 10) / 100,
-        // 	() => { }
-        // );
-        // if (condition_count >= 2)
-        // 	getCombatSystem().useSkill("partyheal");
-        getPartySystem().useSkillOnParty(function (member) {
-            if (getHpPercent(member) < percent / 100) {
-                if (can_heal(member) && !is_on_cooldown("heal"))
-                    heal(member);
-                // else if (distance(character, member) > 150) {
-                // 	move(
-                // 		character.x+(member.x-character.x)/4,
-                // 		character.y+(member.y-character.y)/4
-                // 	);
-                // }
-            }
-        });
+    InventorySystem.prototype.inventorySize = function () {
+        var num_items = 0;
+        for (var i in character.items)
+            if (character.items[i])
+                num_items++;
+        return num_items;
     };
-    return ZetdPriest;
-}(CharacterFunction));
-
-
-;// CONCATENATED MODULE: ./src/characters/zettex-rogue.ts
-var zettex_rogue_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
+    InventorySystem.prototype.findItem = function (params, items) {
+        if (items === void 0) { items = character.items; }
+        var foundItems = this.findItems(params, items);
+        return foundItems ? foundItems[0] : -1;
     };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    InventorySystem.prototype.findItems = function (params, items) {
+        if (items === void 0) { items = character.items; }
+        var foundItems = [];
+        for (var i = 0; i < items.length; i++) {
+            if (!items[i])
+                continue;
+            if (params.name && items[i].name != params.name)
+                continue;
+            if (params.maxRefine && items[i].level >= params.maxRefine)
+                continue;
+            if (params.level && items[i].level != params.level)
+                continue;
+            foundItems.push(i);
+        }
+        return (foundItems.length === 0) ? null : foundItems;
     };
-})();
-
-
-
-var ZettexRogue = /** @class */ (function (_super) {
-    zettex_rogue_extends(ZettexRogue, _super);
-    function ZettexRogue() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    ZettexRogue.prototype.getName = function () {
-        return "Zettex";
+    InventorySystem.prototype.sendItems = function (name, startIdx, endIdx) {
+        if (startIdx === void 0) { startIdx = 0; }
+        if (endIdx === void 0) { endIdx = 42; }
+        for (var i = startIdx; i < endIdx; i++) {
+            if (!character.items[i]
+                || character.items[i].name === "tracker"
+                || character.items[i].name.includes("pot"))
+                continue;
+            send_item(name, i, character.items[i].q);
+        }
     };
-    ZettexRogue.prototype.setup = function () {
-        var _this = this;
-        _super.prototype.setup.call(this);
-        getCombatSystem().setPreAttack(function (tar) {
-            if (getHpPercent(tar) > 0.8)
-                useSkill(_this.getSkills().invis);
-        });
-    };
-    ZettexRogue.prototype.tick = function () {
-        buff(this.getSkills().rspeed);
-        buffEveryone(this.getSkills().rspeed);
-        getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x - 5, character.y - 5); });
-    };
-    return ZettexRogue;
-}(CharacterFunction));
+    InventorySystem.merchantName = "Zetchant";
+    return InventorySystem;
+}(System));
 
 
 ;// CONCATENATED MODULE: ./src/characters/zett-warrior.ts
@@ -2532,6 +1790,419 @@ var SoloCombat = /** @class */ (function (_super) {
     };
     return SoloCombat;
 }(CombatSystem));
+
+
+;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
+var SmartMoveLocation = /** @class */ (function () {
+    function SmartMoveLocation(x, y, map, name) {
+        this.x = x;
+        this.y = y;
+        this.map = map;
+        this.name = name;
+    }
+    SmartMoveLocation.create = function (x, y, map, name) {
+        return new SmartMoveLocation(x, y, map, name);
+    };
+    SmartMoveLocation.createName = function (name) {
+        return new SmartMoveLocation(null, null, null, name);
+    };
+    SmartMoveLocation.prototype.get = function () {
+        if (!this.x && !this.y && !this.map)
+            return this.name;
+        return this;
+    };
+    return SmartMoveLocation;
+}());
+
+var SmartLocations = /** @class */ (function () {
+    function SmartLocations() {
+    }
+    SmartLocations.TOWN = SmartMoveLocation.create(0, 0, "main", "town");
+    return SmartLocations;
+}());
+
+var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
+var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
+var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
+var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
+
+;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
+var locationSystem_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+var LocationState;
+(function (LocationState) {
+})(LocationState || (LocationState = {}));
+var LocationSystem = /** @class */ (function (_super) {
+    locationSystem_extends(LocationSystem, _super);
+    function LocationSystem() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    LocationSystem.prototype.getName = function () {
+        return "LocationSystem";
+    };
+    LocationSystem.prototype.getLogIcon = function () {
+        return createDivWithColor("&#128099;", "purple", 10);
+    };
+    LocationSystem.prototype.smartMove = function (dest, destinationName) {
+        if (isStandOpen())
+            close_stand();
+        this.destination = dest;
+        this.destinationName = destinationName;
+        this.setLocation(destinationName);
+        return smart_move(dest);
+    };
+    LocationSystem.prototype.getSmartMoveLocation = function (smartMoveLoc) {
+        return smartMoveLoc ? smartMoveLoc : {
+            map: character.map,
+            x: character.real_x - 5,
+            y: character.real_y + 5,
+            smart: smart
+        };
+    };
+    LocationSystem.prototype.setLocation = function (location) {
+        parent.currentLocation = location;
+    };
+    return LocationSystem;
+}(System));
+
+var NoOpLocation = /** @class */ (function (_super) {
+    locationSystem_extends(NoOpLocation, _super);
+    function NoOpLocation() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return NoOpLocation;
+}(LocationSystem));
+
+
+;// CONCATENATED MODULE: ./src/systems/location/soloLocation.ts
+var soloLocation_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+
+var whitelistedWorldBosses = ["snowman"];
+var worldBossSmartMoveLocation = {
+    "snowman": SNOWMAN
+};
+var SoloLocation = /** @class */ (function (_super) {
+    soloLocation_extends(SoloLocation, _super);
+    function SoloLocation(mobDestination, locationChangeIntervalMin) {
+        var _this = _super.call(this) || this;
+        _this.mobDestination = mobDestination;
+        _this.locationChangeIntervalMin = locationChangeIntervalMin;
+        _this.lastDestinationChangeAt = pastDatePlusMins(locationChangeIntervalMin + 1);
+        parent.currentLocation = "?";
+        return _this;
+    }
+    SoloLocation.prototype.tick = function () {
+        // TODO: grinch is special, remove after event is over
+        var grinch = getAlWorldBoss("grinch");
+        if (parent.S.grinch.live) {
+            if (!this.previousGrinchLocation) {
+                this.previousGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
+            }
+            if (secSince(this.lastDestinationChangeAt) > 10 && getCombatSystem().stateMachine.currentState != CombatState.WB) {
+                var currentGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
+                if (!smart.moving || !isWithinSquare(this.previousGrinchLocation, currentGrinchLocation, 200)) {
+                    this.smartMove(parent.S["grinch"], "grinch");
+                    this.lastDestinationChangeAt = new Date();
+                }
+                this.previousGrinchLocation = currentGrinchLocation;
+            }
+        }
+        else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
+            changeServer(grinch.serverRegion, grinch.serverIdentifier);
+        }
+        // Engaged in boss/worldboss, do not move
+        else if (getCombatSystem().stateMachine.currentState === CombatState.WB || getCombatSystem().stateMachine.currentState === CombatState.B) {
+            if (sinceConvert(getCombatSystem().stateMachine.currentStateSetTime, TimeIn.SECONDS) > 10) {
+                this.forceNextLocation();
+            }
+        }
+        else if (!character.s.holidayspirit) {
+            this.smartMove("town", "xmas-buff").then(function () {
+                parent.socket.emit("interaction", { type: "newyear_tree" });
+            });
+            return;
+        }
+        else {
+            var sinceWb = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.WB);
+            var sinceB = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.B);
+            if (sinceWb > 30 && sinceB > 30) {
+                this.moveToNextLocation();
+            }
+            else {
+                debugLog("sinceWb: " + sinceWb + " | sinceB: " + sinceB, "location_debug!");
+            }
+        }
+    };
+    SoloLocation.prototype.forceNextLocation = function () {
+        this.lastDestinationChangeAt = pastDatePlusMins(this.locationChangeIntervalMin + 1);
+    };
+    SoloLocation.prototype.moveToNextLocation = function () {
+        var nextLocation;
+        var bossSpawningSoon = false;
+        // always goes to bosses in order
+        for (var boss in whitelistedWorldBosses) {
+            var worldBossName = whitelistedWorldBosses[boss];
+            var worldBoss = isWorldBossReady(worldBossName);
+            if (!worldBossSmartMoveLocation[worldBossName])
+                debugLog("No SmartLocation found for " + worldBossName);
+            if (worldBoss) {
+                // TODO: make this prettier?
+                if (worldBoss.serverIdentifier != server.id || worldBoss.serverRegion != server.region) {
+                    changeServer(worldBoss.serverRegion, worldBoss.serverIdentifier);
+                    return;
+                }
+                nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
+                this.nextLocationName = worldBossName;
+                this.forceNextLocation();
+                bossSpawningSoon = true;
+            }
+        }
+        // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
+        if (!bossSpawningSoon && ("PVP" != server.id || "US" != server.region)) {
+            changeServer("US", "PVP");
+        }
+        if (!nextLocation) {
+            if (typeof this.mobDestination === "string") {
+                nextLocation = this.nextLocationName = this.mobDestination;
+            }
+            else {
+                nextLocation = this.mobDestination.get();
+                this.nextLocationName = this.mobDestination.name;
+            }
+        }
+        if (this.nextLocationName === parent.currentLocation) {
+            return;
+        }
+        if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
+            this.smartMove(nextLocation, this.nextLocationName);
+            this.lastDestinationChangeAt = new Date();
+        }
+    };
+    return SoloLocation;
+}(LocationSystem));
+
+
+;// CONCATENATED MODULE: ./src/systems/debug/logging.ts
+var logging_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+var C_MESSAGE_TYPE_MERCHANT = "t_merchant";
+var C_MESSAGE_TYPE_STALL = "t_stall";
+var C_MESSAGE_TYPE_GOLD = "t_gold";
+var C_MESSAGE_TYPE_COMPOUND = "t_compound";
+var C_MESSAGE_TYPE_UPGRADE = "t_upgrade";
+var C_MESSAGE_TYPE_WALKING = "t_walking";
+var C_MESSAGE_TYPE_TARGET = "t_target";
+var C_ICON_DIV = createDivWithColor("@", "purple");
+var NL = "<br>";
+var LoggingSystem = /** @class */ (function (_super) {
+    logging_extends(LoggingSystem, _super);
+    function LoggingSystem() {
+        var _this = _super.call(this) || this;
+        _this.messageQueue = {};
+        _this._logMovement = true;
+        _this._logStatus = true;
+        _this._logMoney = false;
+        _this._logInventory = true;
+        _this._logCombat = true;
+        _this._logLocation = true;
+        _this._logWorldBosses = true;
+        _this._itemsShownCount = 0;
+        return _this;
+    }
+    LoggingSystem.prototype.setLogMovement = function (value) {
+        this._logMovement = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogStatus = function (value) {
+        this._logStatus = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogMoney = function (value) {
+        this._logMoney = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogInventory = function (value) {
+        this._logInventory = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogCombat = function (value) {
+        this._logCombat = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogLocation = function (value) {
+        this._logLocation = value;
+        return this;
+    };
+    LoggingSystem.prototype.setLogWorldBosses = function (value) {
+        this._logWorldBosses = value;
+        return this;
+    };
+    LoggingSystem.prototype.getName = function () {
+        return "LoggingSystem";
+    };
+    LoggingSystem.prototype.getLogIcon = function () {
+        throw new Error("Method not implemented.");
+    };
+    LoggingSystem.prototype.beforeBusy = function () {
+        if (!canCall("displayLogMessages", this.getName(), 1000))
+            return;
+        this.displayLogMessages();
+    };
+    LoggingSystem.prototype.tick = function () { };
+    LoggingSystem.prototype.displayLogMessages = function () {
+        // Status Logging
+        var hpDiv = createDivWithColor(Math.trunc(getHpPercent() * 100) + "%", "indianred");
+        var mpDiv = createDivWithColor(Math.trunc(getMpPercent() * 100) + "%", "lightblue");
+        var lvlDiv = createDivWithColor("Lv" + character.level + " (" + Math.trunc(character.xp / character.max_xp * 100) + "%)", "greenyellow");
+        var statusLogging = !this._logStatus ? "" : hpDiv + "/" + mpDiv + " | " + lvlDiv;
+        // Money Logging
+        var moneyLogging = !this._logMoney ? "" : NL + "&#128184; " + character.gold;
+        // Inventory Logging
+        var inventoryLogging = "";
+        if (this._logInventory) {
+            var inventorySize = getInventorySystem().inventorySize();
+            inventoryLogging = "" + NL + getInventorySystem().getLogIcon() + " " + inventorySize + ": ";
+            var itemsSeen = 0;
+            for (var i = 0; i < character.items.length; i++) {
+                var maybeItem = character.items[i];
+                if (!maybeItem)
+                    continue;
+                itemsSeen++;
+                if (itemsSeen <= this._itemsShownCount)
+                    continue;
+                inventoryLogging += createDivWithColor("" + (maybeItem.level ? "+" + maybeItem.level + " " : "") + maybeItem.name, "yellow");
+                this._itemsShownCount++;
+                break;
+            }
+            if (this._itemsShownCount >= inventorySize) {
+                this._itemsShownCount = 0;
+            }
+        }
+        // Combat Logging
+        var currentTarget = getCombatSystem().currentTarget;
+        var combatLogIcon = getCombatSystem().getLogIcon();
+        var combatLogging = !this._logCombat ? "" : "" + NL + combatLogIcon + " " + getCombatSystem().stateMachine.previousStateDisplay + "->" + getCombatSystem().stateMachine.currentStateDisplay + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().stateMachine.currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
+        // Movement Logging
+        var movementLogging = !this._logMovement || !smart.moving ? "" : NL + (utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName);
+        // Location Logging
+        var locationLogging = "";
+        if (this._logLocation) {
+            var locSystem = utils_getLocationSystem();
+            var locChangeSecs = timeRemainingInSeconds(60 * locSystem.locationChangeIntervalMin, locSystem.lastDestinationChangeAt);
+            locationLogging = "" + parent.currentLocation;
+            if (parent.currentLocation != locSystem.nextLocationName)
+                locationLogging += "->" + locSystem.nextLocationName;
+            locationLogging = "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
+        }
+        // World Boss Logging
+        var wbLogging = "";
+        if (this._logWorldBosses) {
+            var trackedWorldBosses_1 = ["grinch"];
+            whitelistedWorldBosses.forEach(function (wb) { return trackedWorldBosses_1.push(wb); });
+            for (var i = 0; i < trackedWorldBosses_1.length; i++) {
+                var wbName = trackedWorldBosses_1[i];
+                var worldBoss = void 0, isLive = void 0, timeRemaining = void 0;
+                var parentWorldBoss = getParentWorldBoss(wbName);
+                var alWorldBoss = getAlWorldBoss(wbName);
+                // Check for live status first
+                if (parentWorldBoss && parentWorldBoss.live) {
+                    worldBoss = parentWorldBoss;
+                    isLive = true;
+                }
+                else if (alWorldBoss && alWorldBoss.live) {
+                    worldBoss = alWorldBoss;
+                    isLive = true;
+                }
+                else {
+                    // check remaining timer on both bosses
+                    var parentTts = timeTillWorldBoss(parentWorldBoss);
+                    var alTts = timeTillWorldBoss(alWorldBoss);
+                    worldBoss = parentTts < alTts ? parentWorldBoss : alWorldBoss;
+                    timeRemaining = parentTts < alTts ? parentTts : alTts;
+                }
+                if (isLive) {
+                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
+                }
+                else if (timeRemaining) {
+                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
+                }
+                else {
+                    wbLogging += NL + createDivWithColor("[???] " + wbName + ": N/A", "red");
+                }
+            }
+        }
+        var display_msg = "" + statusLogging + moneyLogging + inventoryLogging + combatLogging + locationLogging + movementLogging + wbLogging;
+        for (var k in this.messageQueue) {
+            display_msg += NL;
+            display_msg += this.messageQueue[k].message;
+        }
+        if (display_msg === "")
+            return;
+        set_message(display_msg);
+        for (var k in this.messageQueue) {
+            if (mssince(this.messageQueue[k].date) > this.messageQueue[k].ttl) {
+                delete this.messageQueue[k];
+            }
+        }
+    };
+    LoggingSystem.prototype.addLogMessage = function (message, msg_type, ttlMs) {
+        if (ttlMs === void 0) { ttlMs = 1000; }
+        if (!msg_type) {
+            log(message);
+            return;
+        }
+        this.messageQueue[msg_type] = { message: message, date: new Date(), ttl: ttlMs };
+    };
+    return LoggingSystem;
+}(System));
 
 
 ;// CONCATENATED MODULE: ./src/systems/party.ts
@@ -2877,9 +2548,515 @@ var IsMerchant = /** @class */ (function (_super) {
 }(InventorySystem));
 
 
+;// CONCATENATED MODULE: ./src/characters/merchant/config.ts
+
+
+var MerchantConfig = /** @class */ (function () {
+    function MerchantConfig() {
+    }
+    MerchantConfig.MERCHANT_SKILLS = new MerchantSkills();
+    MerchantConfig.UPGRADE_LIST = [
+        // new UpgradeItem("gloves", 1),
+        // new UpgradeItem("coat1", 7),
+        // new UpgradeItem("pants1", 7),
+        // new UpgradeItem("shoes1", 7),
+        // new UpgradeItem("helmet1", 7),
+        // new UpgradeItem("stinger", 8),
+        new UpgradeItem("gcape", 7),
+        new UpgradeItem("wcap", 7),
+        new UpgradeItem("wshoes", 7),
+        new UpgradeItem("wbreeches", 7),
+        new UpgradeItem("wattire", 7),
+        new UpgradeItem("wgloves", 7),
+        new UpgradeItem("slimestaff", 7),
+        new UpgradeItem("phelmet", 7),
+        new UpgradeItem("sshield", 7),
+        new UpgradeItem("firestaff", 7),
+        new UpgradeItem("fireblade", 7),
+        new UpgradeItem("mcape", 6),
+        new UpgradeItem("ringsj", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("wbook0", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("strring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("intring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("dexring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("vitring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("strearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("intearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("dexearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("vitearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("dexamulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("stramulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("vitamulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("intamulet", 3, UpgradeType.COMPOUND),
+    ];
+    MerchantConfig.VEND_LIST = [
+    // { level: 3, name: "ringsj" },
+    // { level: 3, name: "hpamulet" },
+    // { level: 3, name: "hpbelt" },
+    ];
+    MerchantConfig.SELL_LIST = [
+        { name: "xmace" },
+        { name: "iceskates" },
+        { name: "gloves" },
+    ];
+    return MerchantConfig;
+}());
+
+
+;// CONCATENATED MODULE: ./src/characters/merchant/cleaning.ts
+
+
+
+
+var CleaningState;
+(function (CleaningState) {
+    CleaningState[CleaningState["IDLING"] = 0] = "IDLING";
+    CleaningState[CleaningState["MOVING_BANK"] = 1] = "MOVING_BANK";
+    CleaningState[CleaningState["BANKING"] = 2] = "BANKING";
+    CleaningState[CleaningState["CLEANING"] = 3] = "CLEANING";
+})(CleaningState || (CleaningState = {}));
+var Cleaning = /** @class */ (function () {
+    function Cleaning() {
+        this._cleanQueue = [];
+        this._stateMachine = new StateMachine(createDivWithColor("&#9780;", "", 10), function (state) { return CleaningState[state]; }, true);
+        this._stateMachine.currentState = CleaningState.IDLING;
+        this.startCheckCleanLoop();
+    }
+    Cleaning.prototype.hasItems = function () {
+        return this._cleanQueue.length > 0;
+    };
+    Cleaning.prototype.tick = function () {
+        if (this._stateMachine.currentState === CleaningState.IDLING) {
+            if (character.map != "bank")
+                utils_getLocationSystem().smartMove("bank", "bank");
+            this._stateMachine.currentState = CleaningState.MOVING_BANK;
+        }
+        else if (this._stateMachine.currentState === CleaningState.MOVING_BANK) {
+            if (smart.moving)
+                return;
+            else if (character.map === "bank") {
+                this._stateMachine.currentState = CleaningState.BANKING;
+            }
+            else {
+                utils_getLocationSystem().smartMove("bank", "bank");
+            }
+        }
+        else if (this._stateMachine.currentState === CleaningState.BANKING) {
+            this.bankItems();
+            this.sortBankItems();
+            this._stateMachine.currentState = CleaningState.IDLING;
+        }
+        else {
+            throw new Error("Don't recognize state: " + this._stateMachine.currentStateDisplay);
+        }
+    };
+    Cleaning.prototype.bankItems = function () {
+        for (var i = 0; i < this._cleanQueue.length; i++) {
+            bank_store(this._cleanQueue[i].idx);
+        }
+        this._cleanQueue;
+    };
+    Cleaning.prototype.sortBankItems = function () {
+        // TODO:
+    };
+    Cleaning.prototype.startCheckCleanLoop = function () {
+        var _this = this;
+        setInterval(function () {
+            var _loop_1 = function (i) {
+                var item = character.items[i];
+                if (!item)
+                    return "continue";
+                if (C_DO_NOT_STORE_ITEM.find(function (element) { var _a; return (_a = item.name) === null || _a === void 0 ? void 0 : _a.includes(element); }))
+                    return "continue";
+                for (var i_1 in MerchantConfig.UPGRADE_LIST) {
+                    var upgradeItem = MerchantConfig.UPGRADE_LIST[i_1];
+                    if (upgradeItem.name === item.name) {
+                        break;
+                    }
+                }
+                for (var i_2 in MerchantConfig.VEND_LIST) {
+                    var v_item = MerchantConfig.VEND_LIST[i_2];
+                    if (v_item.name === item.name) {
+                        break;
+                    }
+                }
+                // if clean queue has the item, skip
+                for (var j = 0; j < _this._cleanQueue.length; j++) {
+                    if (_this._cleanQueue[j].item.name === item.name)
+                        break;
+                }
+                game_log("Will clean " + item.name);
+                _this._cleanQueue.push({ idx: i, item: item });
+            };
+            for (var i = 0; i < character.items.length; i++) {
+                _loop_1(i);
+            }
+        }, 1000);
+    };
+    return Cleaning;
+}());
+
+
+;// CONCATENATED MODULE: ./src/characters/merchant/upgrading.ts
+
+
+
+
+var UpgradingState;
+(function (UpgradingState) {
+    UpgradingState[UpgradingState["IDLING"] = 0] = "IDLING";
+    UpgradingState[UpgradingState["MOVING_BANK"] = 1] = "MOVING_BANK";
+    UpgradingState[UpgradingState["ARRIVING_BANK"] = 2] = "ARRIVING_BANK";
+    UpgradingState[UpgradingState["SERACHING_AT_BANK"] = 3] = "SERACHING_AT_BANK";
+    UpgradingState[UpgradingState["STORING_AT_BANK"] = 4] = "STORING_AT_BANK";
+    UpgradingState[UpgradingState["MOVING_REFINER"] = 5] = "MOVING_REFINER";
+    UpgradingState[UpgradingState["PREPARING"] = 6] = "PREPARING";
+    UpgradingState[UpgradingState["STARTING_UPGRADE"] = 7] = "STARTING_UPGRADE";
+    UpgradingState[UpgradingState["UPGRADING"] = 8] = "UPGRADING";
+    UpgradingState[UpgradingState["UPGRADING_COMPLETE"] = 9] = "UPGRADING_COMPLETE";
+})(UpgradingState || (UpgradingState = {}));
+var C_MERCHANT_OPENED_BANKS = 8;
+var SCROLL_NPC = find_npc(G.npcs.scrolls.id);
+var Upgrading = /** @class */ (function () {
+    function Upgrading() {
+        this._stateMachine = new StateMachine(createDivWithColor("&#128296;", "", 10), function (state) { return UpgradingState[state]; }, true);
+        this._stateMachine.currentState = UpgradingState.IDLING;
+        this._upgradeQueue = [];
+        this.startRefineQueueUpdater();
+    }
+    Object.defineProperty(Upgrading.prototype, "stateMachine", {
+        get: function () {
+            return this._stateMachine;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Upgrading.prototype.hasItems = function () {
+        return this._upgradeQueue.length > 0;
+    };
+    Upgrading.prototype.startRefineQueueUpdater = function () {
+        var _this = this;
+        setInterval(function () {
+            for (var i = 0; i < MerchantConfig.UPGRADE_LIST.length; i++) {
+                var checkUpgradeItem = MerchantConfig.UPGRADE_LIST[i];
+                if (_this.canRefineItem(checkUpgradeItem)) {
+                    // if upgrade queue has the item, skip
+                    for (var j = 0; j < _this._upgradeQueue.length; j++) {
+                        if (_this._upgradeQueue[j].name === checkUpgradeItem.name)
+                            return;
+                    }
+                    game_log("Adding " + checkUpgradeItem.name + " to the queue");
+                    _this._upgradeQueue.push(checkUpgradeItem);
+                }
+            }
+        }, 1000);
+    };
+    Upgrading.prototype.canRefineItem = function (upgradeItem) {
+        if (upgradeItem.upgradeType == UpgradeType.COMPOUND) {
+            var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+            if (!items)
+                return false;
+            var item_matrix = [];
+            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+                item_matrix.push([]);
+                for (var i = 0; i < items.length; i++) {
+                    if (character.items[items[i]].level === i_lvl)
+                        item_matrix[i_lvl].push(items[i]);
+                }
+            }
+            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+                if (item_matrix[i_lvl].length >= 3) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else {
+            var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
+                : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+            return item_idx != -1;
+        }
+    };
+    Upgrading.prototype.tick = function () {
+        if (this._stateMachine.currentState === UpgradingState.IDLING) {
+            this._targetItem = this._upgradeQueue[0];
+            if (character.map != "bank")
+                utils_getLocationSystem().smartMove("bank", "bank");
+            this._stateMachine.currentState = UpgradingState.MOVING_BANK;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.MOVING_BANK) {
+            if (smart.moving)
+                return;
+            else if (character.map === "bank") {
+                this._stateMachine.currentState = UpgradingState.ARRIVING_BANK;
+            }
+            else {
+                utils_getLocationSystem().smartMove("bank", "bank");
+            }
+        }
+        else if (this._stateMachine.currentState === UpgradingState.ARRIVING_BANK) {
+            if (this._targetItem)
+                this._stateMachine.currentState = UpgradingState.SERACHING_AT_BANK;
+            else if (this._lastTargetItem)
+                this._stateMachine.currentState = UpgradingState.STORING_AT_BANK;
+            else
+                throw new Error("State Error in " + UpgradingState[UpgradingState.ARRIVING_BANK]);
+        }
+        else if (this._stateMachine.currentState === UpgradingState.SERACHING_AT_BANK) {
+            this.searchForTargetItem();
+            utils_getLocationSystem().smartMove("scrolls", "scrolls");
+            this._stateMachine.currentState = UpgradingState.MOVING_REFINER;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.STORING_AT_BANK) {
+            this.storeLastTargetItem();
+            this._lastTargetItem = null;
+            this._upgradeQueue.shift();
+            this._stateMachine.currentState = UpgradingState.IDLING;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.MOVING_REFINER) {
+            if (smart.moving)
+                return;
+            else if (distance(character, SCROLL_NPC) < 100) {
+                this._stateMachine.currentState = UpgradingState.PREPARING;
+            }
+            else {
+                utils_getLocationSystem().smartMove("scrolls", "scrolls");
+            }
+        }
+        else if (this._stateMachine.currentState === UpgradingState.PREPARING) {
+            this.handlePreparing();
+            this._stateMachine.currentState = UpgradingState.STARTING_UPGRADE;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.STARTING_UPGRADE) {
+            this.handleUpgrading();
+            this._stateMachine.currentState = UpgradingState.UPGRADING;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.UPGRADING) {
+            if (isQBusy())
+                return; // mid-upgrade
+            else if (this.canRefineItem(this._targetItem)) {
+                this._stateMachine.currentState = UpgradingState.PREPARING;
+            }
+            else {
+                this._stateMachine.currentState = UpgradingState.UPGRADING_COMPLETE;
+            }
+        }
+        else if (this._stateMachine.currentState === UpgradingState.UPGRADING_COMPLETE) {
+            this._lastTargetItem = this._upgradeQueue[0];
+            this._targetItem = null;
+            utils_getLocationSystem().smartMove("bank", "bank");
+            this._stateMachine.currentState = UpgradingState.MOVING_BANK;
+        }
+        else {
+            throw new Error("Don't recognize state: " + UpgradingState[this._stateMachine.currentState]);
+        }
+    };
+    Upgrading.prototype.searchForTargetItem = function () {
+        var takeItemCount = Math.max(0, 40 - getInventorySystem().inventorySize());
+        if (takeItemCount === 0)
+            return;
+        var itemTakenCount = 0;
+        for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
+            var packName = "items" + packNum;
+            if (!character.bank[packName])
+                continue;
+            var item = this._targetItem;
+            var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
+            if (itemIdxs) {
+                for (var idx = 0; idx < itemIdxs.length; idx++) {
+                    if (itemTakenCount === takeItemCount)
+                        return;
+                    game_log("Getting " + item.name + " on " + packName + ": " + idx);
+                    bank_retrieve(packName, itemIdxs[idx]);
+                    itemTakenCount++;
+                }
+            }
+        }
+    };
+    Upgrading.prototype.storeLastTargetItem = function () {
+        for (var i = 0; i < character.items.length; i++) {
+            var item = character.items[i];
+            if (!item)
+                continue;
+            if (item.name === this._lastTargetItem.name)
+                bank_store(i);
+        }
+    };
+    Upgrading.prototype.handlePreparing = function () {
+        if (this._targetItem.upgradeType === UpgradeType.UPGRADE) {
+            var item_idx = this._targetItem.maxRefine === -1 ? locate_item(this._targetItem.name)
+                : getInventorySystem().findItem({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
+            var grade = item_grade(character.items[item_idx]);
+            var scrollIdx = locate_item("scroll" + grade);
+            if (scrollIdx === -1) {
+                buy("scroll" + grade);
+            }
+        }
+        else {
+            var items = getInventorySystem().findItems({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
+            var item_matrix = [];
+            for (var i_lvl = 0; i_lvl < this._targetItem.maxRefine; i_lvl++) {
+                item_matrix.push([]);
+                for (var i = 0; i < items.length; i++) {
+                    if (character.items[items[i]].level === i_lvl)
+                        item_matrix[i_lvl].push(items[i]);
+                }
+            }
+            for (var i_lvl = 0; i_lvl < this._targetItem.maxRefine; i_lvl++) {
+                if (item_matrix[i_lvl].length >= 3) {
+                    items = item_matrix[i_lvl];
+                    var itemGrade = item_grade(character.items[items[0]]);
+                    if (locate_item("cscroll" + itemGrade) === -1) {
+                        buy("cscroll" + itemGrade);
+                    }
+                    return;
+                }
+            }
+        }
+    };
+    Upgrading.prototype.handleUpgrading = function () {
+        game_log("Upgrading " + this._targetItem.name);
+        buff(MerchantConfig.MERCHANT_SKILLS.massproductionpp);
+        if (this._targetItem.upgradeType === UpgradeType.COMPOUND) {
+            this.smartCompound(this._targetItem);
+        }
+        else {
+            this.smartUpgrade(this._targetItem);
+        }
+    };
+    Upgrading.prototype.smartUpgrade = function (upgradeItem) {
+        var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
+            : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+        var grade = item_grade(character.items[item_idx]);
+        var scroll_idx = locate_item("scroll" + grade);
+        getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
+        var upgrade_promise = upgrade(item_idx, scroll_idx);
+        return upgrade_promise;
+    };
+    Upgrading.prototype.smartCompound = function (upgradeItem) {
+        var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+        var item_matrix = [];
+        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+            item_matrix.push([]);
+            for (var i = 0; i < items.length; i++) {
+                if (character.items[items[i]].level === i_lvl)
+                    item_matrix[i_lvl].push(items[i]);
+            }
+        }
+        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+            if (item_matrix[i_lvl].length >= 3) {
+                items = item_matrix[i_lvl];
+                var grade = item_grade(character.items[items[0]]);
+                getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
+                return compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
+            }
+        }
+        throw new Error("Should not happen: " + this._stateMachine.currentState);
+    };
+    return Upgrading;
+}());
+
+
+;// CONCATENATED MODULE: ./src/characters/merchant/zetchant.ts
+
+
+
+
+
+
+
+
+var Zetchant = /** @class */ (function () {
+    function Zetchant(partySystem, inventorySystem, loggingSystem) {
+        this.partySystem = partySystem;
+        this.inventorySystem = inventorySystem;
+        this.loggingSystem = loggingSystem;
+        this.upgrading = new Upgrading();
+        this.cleaning = new Cleaning();
+    }
+    Zetchant.prototype.start = function () {
+        // global variables
+        parent.locationSystem = new NoOpLocation();
+        parent.inventorySystem = this.inventorySystem;
+        parent.loggingSystem = this.loggingSystem;
+        parent.partySystem = this.partySystem;
+        parent.combatSystem = new NoOpCombat();
+        // legacy system to be removed loop
+        this.legacyLoop();
+        // start loops
+        this.mainLoop();
+        this.startBuffLoop();
+        this.startSellingLoop();
+        // Global Stuff
+        addGlobalFunctions();
+        fixAddLog();
+        modifyUi();
+        zUi();
+    };
+    Zetchant.prototype.mainLoop = function () {
+        var _this = this;
+        setInterval(function () {
+            if (character.rip)
+                respawn();
+            _this.loggingSystem.beforeBusy();
+            _this.loggingSystem.tick();
+            _this.upgrading.stateMachine.logState();
+            if (_this.upgrading.hasItems()) {
+                _this.upgrading.tick();
+            }
+            else if (_this.cleaning.hasItems()) {
+                _this.cleaning.tick();
+            }
+        }, 1000);
+    };
+    Zetchant.prototype.legacyLoop = function () {
+        var _this = this;
+        setInterval(function () {
+            _this.partySystem.beforeBusy();
+            _this.partySystem.tick();
+            _this.inventorySystem.beforeBusy();
+            _this.inventorySystem.tick();
+            if (getHpPercent() < .5)
+                use_skill('use_hp'); // leaving it as is
+            if (getMpPercent() < .75)
+                use_skill('use_mp'); // leaving it as is
+        }, 1000);
+    };
+    /**
+     * Buff everyone including myself every X interval
+     */
+    Zetchant.prototype.startBuffLoop = function (ms) {
+        if (ms === void 0) { ms = 1000; }
+        setInterval(function () {
+            buff(MerchantConfig.MERCHANT_SKILLS.mluck);
+            buffEveryone(MerchantConfig.MERCHANT_SKILLS.mluck, minutesInMs(45));
+        }, ms);
+    };
+    Zetchant.prototype.startSellingLoop = function () {
+        setInterval(function () {
+            if (!isCharacterWithin(SmartLocations.TOWN, 500))
+                return;
+            // TODO: remove after christmas
+            if (!character.s.holidayspirit)
+                parent.socket.emit("interaction", { type: "newyear_tree" });
+            for (var i = 0; i < character.items.length; i++) {
+                var item = character.items[i];
+                if (!item)
+                    continue;
+                for (var j = 0; j < MerchantConfig.SELL_LIST.length; j++) {
+                    if (item.name === MerchantConfig.SELL_LIST[j].name)
+                        sell(i);
+                }
+            }
+        }, 10000);
+    };
+    return Zetchant;
+}());
+
+
 ;// CONCATENATED MODULE: ./src/start.ts
-
-
 
 
 
@@ -2912,7 +3089,7 @@ characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new Sol
 new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetchant"] = new Character(new ZetchantMerchant(new MerchantSkills()), new NoOpCombat(), new IsMerchant().setPotQtyThreshold(3000), new NoOpLocation(), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+characters["Zetchant"] = new Zetchant(new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]), new IsMerchant().setPotQtyThreshold(3000), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

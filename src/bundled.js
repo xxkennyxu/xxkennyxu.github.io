@@ -1044,6 +1044,7 @@ function bringPotionReply(name, data) {
 var System = /** @class */ (function () {
     function System() {
         this._stateLastSetTime = {};
+        this._currentStateSetTime = new Date();
     }
     Object.defineProperty(System.prototype, "previousState", {
         get: function () {
@@ -1802,6 +1803,7 @@ var C_MESSAGE_TYPE_UPGRADE = "t_upgrade";
 var C_MESSAGE_TYPE_WALKING = "t_walking";
 var C_MESSAGE_TYPE_TARGET = "t_target";
 var C_ICON_DIV = createDivWithColor("@", "purple");
+var NL = "<br>";
 var LoggingSystem = /** @class */ (function (_super) {
     logging_extends(LoggingSystem, _super);
     function LoggingSystem() {
@@ -1829,11 +1831,11 @@ var LoggingSystem = /** @class */ (function (_super) {
         var statusLogging = hpDiv + "/" + mpDiv + " | " + lvlDiv;
         // Inventory Logging
         var inventorySize = getInventorySystem().inventorySize();
-        var inventoryLogging = "\n" + getInventorySystem().getLogIcon() + (C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize);
+        var inventoryLogging = "" + NL + getInventorySystem().getLogIcon() + (C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD - inventorySize);
         // Combat Logging
         var currentTarget = getCombatSystem().currentTarget;
         var combatLogIcon = getCombatSystem().getLogIcon();
-        var combatLogging = "\n" + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
+        var combatLogging = "" + NL + combatLogIcon + " " + CombatState[getCombatSystem().previousState] + "->" + CombatState[getCombatSystem().currentState] + "<br>" + combatLogIcon + " (" + sinceConvert(getCombatSystem().currentStateSetTime, TimeIn.SECONDS).toString() + ") " + (currentTarget ? currentTarget.name : "N/A");
         // Movement Logging
         var movementLogging = smart.moving ? "\n" + utils_getLocationSystem().getLogIcon() + " " + utils_getLocationSystem().destinationName : "";
         // Location Logging
@@ -1842,7 +1844,7 @@ var LoggingSystem = /** @class */ (function (_super) {
         var locationLogging = "" + parent.currentLocation;
         if (parent.currentLocation != locSystem.nextLocationName)
             locationLogging += "->" + locSystem.nextLocationName;
-        locationLogging = "\n" + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
+        locationLogging = "" + NL + C_ICON_DIV + " " + locationLogging + " " + (locChangeSecs > 0 ? locChangeSecs : "");
         // World Boss Logging
         var wbLogging = "";
         var trackedWorldBosses = ["grinch"];
@@ -1869,19 +1871,18 @@ var LoggingSystem = /** @class */ (function (_super) {
                 timeRemaining = parentTts < alTts ? parentTts : alTts;
             }
             if (isLive) {
-                wbLogging += "\n" + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
+                wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
             }
             else if (timeRemaining) {
-                wbLogging += "\n" + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
+                wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
             }
             else {
-                wbLogging += "\n" + createDivWithColor("[???] " + wbName + ": N/A", "red");
+                wbLogging += NL + createDivWithColor("[???] " + wbName + ": N/A", "red");
             }
         }
-        var display_msg = hpDiv + "/" + mpDiv + " | " + lvlDiv;
-        display_msg += "" + statusLogging + inventoryLogging + combatLogging + locationLogging + movementLogging + wbLogging;
+        var display_msg = "" + statusLogging + inventoryLogging + combatLogging + locationLogging + movementLogging + wbLogging;
         for (var k in this.messageQueue) {
-            display_msg += "<br>";
+            display_msg += NL;
             display_msg += this.messageQueue[k].message;
         }
         if (display_msg === "")

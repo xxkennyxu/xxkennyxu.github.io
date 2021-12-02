@@ -2602,110 +2602,6 @@ var MerchantConfig = /** @class */ (function () {
 }());
 
 
-;// CONCATENATED MODULE: ./src/characters/merchant/cleaning.ts
-
-
-
-
-var CleaningState;
-(function (CleaningState) {
-    CleaningState[CleaningState["IDLING"] = 0] = "IDLING";
-    CleaningState[CleaningState["MOVING_BANK"] = 1] = "MOVING_BANK";
-    CleaningState[CleaningState["BANKING"] = 2] = "BANKING";
-    CleaningState[CleaningState["CLEANING"] = 3] = "CLEANING";
-})(CleaningState || (CleaningState = {}));
-var Cleaning = /** @class */ (function () {
-    function Cleaning() {
-        this._cleanQueue = [];
-        this._stateMachine = new StateMachine(createDivWithColor("&#9780;", "", 10), function (state) { return CleaningState[state]; }, true);
-        this._stateMachine.currentState = CleaningState.IDLING;
-        this.startCheckCleanLoop();
-    }
-    Object.defineProperty(Cleaning.prototype, "stateMachine", {
-        get: function () {
-            return this._stateMachine;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Cleaning.prototype.hasItems = function () {
-        return this._cleanQueue.length > 0;
-    };
-    Cleaning.prototype.tick = function () {
-        if (this._stateMachine.currentState === CleaningState.IDLING) {
-            if (character.map != "bank")
-                utils_getLocationSystem().smartMove("bank", "bank");
-            this._stateMachine.currentState = CleaningState.MOVING_BANK;
-        }
-        else if (this._stateMachine.currentState === CleaningState.MOVING_BANK) {
-            if (smart.moving)
-                return;
-            else if (character.map === "bank") {
-                this._stateMachine.currentState = CleaningState.BANKING;
-            }
-            else {
-                utils_getLocationSystem().smartMove("bank", "bank");
-            }
-        }
-        else if (this._stateMachine.currentState === CleaningState.BANKING) {
-            this.bankItems();
-            this.sortBankItems();
-            this._stateMachine.currentState = CleaningState.IDLING;
-        }
-        else {
-            throw new Error("Don't recognize state: " + this._stateMachine.currentStateDisplay);
-        }
-    };
-    Cleaning.prototype.bankItems = function () {
-        for (var i = 0; i < this._cleanQueue.length; i++) {
-            bank_store(this._cleanQueue[i].idx);
-        }
-        this._cleanQueue = [];
-    };
-    Cleaning.prototype.sortBankItems = function () {
-        // TODO:
-    };
-    Cleaning.prototype.startCheckCleanLoop = function () {
-        var _this = this;
-        setInterval(function () {
-            var _loop_1 = function (i) {
-                var item = character.items[i];
-                if (!item)
-                    return "continue";
-                if (C_DO_NOT_STORE_ITEM.find(function (element) { var _a; return (_a = item.name) === null || _a === void 0 ? void 0 : _a.includes(element); }))
-                    return "continue";
-                var bankItem = true;
-                for (var i_1 in MerchantConfig.UPGRADE_LIST) {
-                    var upgradeItem = MerchantConfig.UPGRADE_LIST[i_1];
-                    if (upgradeItem.name === item.name) {
-                        bankItem = false;
-                    }
-                }
-                for (var i_2 in MerchantConfig.VEND_LIST) {
-                    var v_item = MerchantConfig.VEND_LIST[i_2];
-                    if (v_item.name === item.name) {
-                        bankItem = false;
-                    }
-                }
-                // if clean queue has the item, skip
-                for (var j = 0; j < _this._cleanQueue.length; j++) {
-                    if (_this._cleanQueue[j].item.name === item.name)
-                        bankItem = false;
-                }
-                if (bankItem) {
-                    game_log("Will clean " + item.name);
-                    _this._cleanQueue.push({ idx: i, item: item });
-                }
-            };
-            for (var i = 0; i < character.items.length; i++) {
-                _loop_1(i);
-            }
-        }, 1000);
-    };
-    return Cleaning;
-}());
-
-
 ;// CONCATENATED MODULE: ./src/characters/merchant/upgrading.ts
 
 
@@ -2748,7 +2644,7 @@ var Upgrading = /** @class */ (function () {
         setInterval(function () {
             for (var i = 0; i < MerchantConfig.UPGRADE_LIST.length; i++) {
                 var checkUpgradeItem = MerchantConfig.UPGRADE_LIST[i];
-                if (_this.canRefineItem(checkUpgradeItem)) {
+                if (Upgrading.canRefineItem(checkUpgradeItem)) {
                     // if upgrade queue has the item, skip
                     for (var j = 0; j < _this._upgradeQueue.length; j++) {
                         if (_this._upgradeQueue[j].name === checkUpgradeItem.name)
@@ -2760,9 +2656,10 @@ var Upgrading = /** @class */ (function () {
             }
         }, 1000);
     };
-    Upgrading.prototype.canRefineItem = function (upgradeItem) {
+    Upgrading.canRefineItem = function (upgradeItem, inventory) {
+        if (inventory === void 0) { inventory = character.items; }
         if (upgradeItem.upgradeType == UpgradeType.COMPOUND) {
-            var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+            var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine }, inventory);
             if (!items)
                 return false;
             var item_matrix = [];
@@ -2782,7 +2679,7 @@ var Upgrading = /** @class */ (function () {
         }
         else {
             var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
-                : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+                : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine }, inventory);
             return item_idx != -1;
         }
     };
@@ -2843,7 +2740,7 @@ var Upgrading = /** @class */ (function () {
         else if (this._stateMachine.currentState === UpgradingState.UPGRADING) {
             if (isQBusy())
                 return; // mid-upgrade
-            else if (this.canRefineItem(this._targetItem)) {
+            else if (Upgrading.canRefineItem(this._targetItem)) {
                 this._stateMachine.currentState = UpgradingState.PREPARING;
             }
             else {
@@ -2963,6 +2860,157 @@ var Upgrading = /** @class */ (function () {
         throw new Error("Should not happen: " + this._stateMachine.currentState);
     };
     return Upgrading;
+}());
+
+
+;// CONCATENATED MODULE: ./src/characters/merchant/cleaning.ts
+
+
+
+
+
+var CleaningState;
+(function (CleaningState) {
+    CleaningState[CleaningState["IDLING"] = 0] = "IDLING";
+    CleaningState[CleaningState["MOVING_BANK"] = 1] = "MOVING_BANK";
+    CleaningState[CleaningState["BANKING"] = 2] = "BANKING";
+    CleaningState[CleaningState["CLEANING"] = 3] = "CLEANING";
+})(CleaningState || (CleaningState = {}));
+var Cleaning = /** @class */ (function () {
+    function Cleaning() {
+        this._cleanQueue = [];
+        this._stateMachine = new StateMachine(createDivWithColor("&#9780;", "", 10), function (state) { return CleaningState[state]; }, true);
+        this._stateMachine.currentState = CleaningState.IDLING;
+        this.startCheckCleanLoop();
+    }
+    Object.defineProperty(Cleaning.prototype, "stateMachine", {
+        get: function () {
+            return this._stateMachine;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Cleaning.prototype.hasItems = function () {
+        return this._cleanQueue.length > 0;
+    };
+    Cleaning.prototype.tick = function () {
+        if (this._stateMachine.currentState === CleaningState.IDLING) {
+            if (character.map != "bank")
+                utils_getLocationSystem().smartMove("bank", "bank");
+            this._stateMachine.currentState = CleaningState.MOVING_BANK;
+        }
+        else if (this._stateMachine.currentState === CleaningState.MOVING_BANK) {
+            if (smart.moving)
+                return;
+            else if (character.map === "bank") {
+                this._stateMachine.currentState = CleaningState.BANKING;
+            }
+            else {
+                utils_getLocationSystem().smartMove("bank", "bank");
+            }
+        }
+        else if (this._stateMachine.currentState === CleaningState.BANKING) {
+            this.bankItems();
+            this.getItemsFromBank();
+            this.sortBankItems();
+            this._stateMachine.currentState = CleaningState.IDLING;
+        }
+        else {
+            throw new Error("Don't recognize state: " + this._stateMachine.currentStateDisplay);
+        }
+    };
+    Cleaning.prototype.bankItems = function () {
+        for (var i = 0; i < this._cleanQueue.length; i++) {
+            bank_store(this._cleanQueue[i].idx);
+        }
+        this._cleanQueue = [];
+    };
+    Cleaning.prototype.sortBankItems = function () {
+        // TODO:
+    };
+    Cleaning.prototype.getItemsFromBank = function () {
+        var takeItemCount = Math.max(0, 40 - getInventorySystem().inventorySize());
+        if (takeItemCount === 0)
+            return;
+        var itemTakenCount = 0;
+        for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
+            var packName = "items" + packNum;
+            if (!character.bank[packName])
+                continue;
+            for (var i = 0; i < MerchantConfig.SELL_LIST.length; i++) {
+                var item = MerchantConfig.SELL_LIST[i];
+                var itemIdxs = getInventorySystem().findItems({ name: item.name }, character.bank[packName]);
+                if (itemIdxs) {
+                    for (var idx = 0; idx < itemIdxs.length; idx++) {
+                        if (itemTakenCount === takeItemCount)
+                            return;
+                        game_log("Getting " + item.name + " on " + packName + ": " + idx);
+                        bank_retrieve(packName, itemIdxs[idx]);
+                        itemTakenCount++;
+                    }
+                }
+            }
+            for (var i = 0; i < MerchantConfig.UPGRADE_LIST.length; i++) {
+                var item = MerchantConfig.UPGRADE_LIST[i];
+                if (Upgrading.canRefineItem(item, character.bank[packName])) {
+                    var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
+                    if (itemIdxs) {
+                        for (var idx = 0; idx < itemIdxs.length; idx++) {
+                            if (itemTakenCount === takeItemCount)
+                                return;
+                            game_log("Getting " + item.name + " on " + packName + ": " + idx);
+                            bank_retrieve(packName, itemIdxs[idx]);
+                            itemTakenCount++;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    Cleaning.prototype.startCheckCleanLoop = function () {
+        var _this = this;
+        setInterval(function () {
+            var _loop_1 = function (i) {
+                var item = character.items[i];
+                if (!item)
+                    return "continue";
+                if (C_DO_NOT_STORE_ITEM.find(function (element) { var _a; return (_a = item.name) === null || _a === void 0 ? void 0 : _a.includes(element); }))
+                    return "continue";
+                var bankItem = true;
+                for (var i_1 in MerchantConfig.UPGRADE_LIST) {
+                    var upgradeItem = MerchantConfig.UPGRADE_LIST[i_1];
+                    if (upgradeItem.name === item.name) {
+                        bankItem = false;
+                    }
+                }
+                for (var i_2 in MerchantConfig.VEND_LIST) {
+                    var v_item = MerchantConfig.VEND_LIST[i_2];
+                    if (v_item.name === item.name) {
+                        bankItem = false;
+                    }
+                }
+                for (var i_3 in MerchantConfig.SELL_LIST) {
+                    var s_item = MerchantConfig.SELL_LIST[i_3];
+                    if (s_item.name === item.name) {
+                        bankItem = false;
+                    }
+                }
+                // if clean queue has the item, skip
+                for (var j = 0; j < _this._cleanQueue.length; j++) {
+                    if (_this._cleanQueue[j].item.name === item.name)
+                        bankItem = false;
+                }
+                if (bankItem) {
+                    game_log("Will clean " + item.name);
+                    _this._cleanQueue.push({ idx: i, item: item });
+                }
+            };
+            for (var i = 0; i < character.items.length; i++) {
+                _loop_1(i);
+            }
+        }, 1000);
+    };
+    return Cleaning;
 }());
 
 
@@ -3123,7 +3171,7 @@ var Zetchant = /** @class */ (function () {
                         sell(i);
                 }
             }
-        }, 10000);
+        }, 1000);
     };
     return Zetchant;
 }());

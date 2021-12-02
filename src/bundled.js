@@ -1722,6 +1722,7 @@ var ZettWarrior = /** @class */ (function (_super) {
         // 		}
         // 	});
         // }
+        pause();
     };
     ZettWarrior.prototype.beforeBusy = function () {
         _super.prototype.beforeBusy.call(this);
@@ -2950,21 +2951,21 @@ var Cleaning = /** @class */ (function () {
                     }
                 }
             }
-            for (var i = 0; i < MerchantConfig.UPGRADE_LIST.length; i++) {
-                var item = MerchantConfig.UPGRADE_LIST[i];
-                if (Upgrading.canRefineItem(item, character.bank[packName])) {
-                    var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
-                    if (itemIdxs) {
-                        for (var idx = 0; idx < itemIdxs.length; idx++) {
-                            if (itemTakenCount === takeItemCount)
-                                return;
-                            game_log("Getting " + item.name + " on " + packName + ": " + idx);
-                            bank_retrieve(packName, itemIdxs[idx]);
-                            itemTakenCount++;
-                        }
-                    }
-                }
-            }
+            // TODO: implement getting upgradeable items from bank
+            // for (let i = 0; i < MerchantConfig.UPGRADE_LIST.length; i++) {
+            // 	const item = MerchantConfig.UPGRADE_LIST[i];
+            // 	if (Upgrading.canRefineItem(item, character.bank[packName])) {
+            // 		const itemIdxs = getInventorySystem().findItems({name: item.name, maxRefine: item.maxRefine}, character.bank[packName])
+            // 		if (itemIdxs) {
+            // 			for (let idx = 0; idx < itemIdxs.length; idx++) {
+            // 				if (itemTakenCount === takeItemCount) return;
+            // 				game_log(`Getting ${item.name} on ${packName}: ${idx}`);
+            // 				bank_retrieve(packName, itemIdxs[idx]);
+            // 				itemTakenCount++;
+            // 			}
+            // 		}
+            // 	}
+            // }
         }
     };
     Cleaning.prototype.startCheckCleanLoop = function () {

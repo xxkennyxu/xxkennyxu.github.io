@@ -1951,7 +1951,7 @@ var SoloLocation = /** @class */ (function (_super) {
                 if (AlDataClient.alNPCInfo.Kane.length > 0) {
                     for (var i = 0; i < AlDataClient.alNPCInfo.Kane.length; i++) {
                         var kane = AlDataClient.alNPCInfo.Kane[i];
-                        if (kane.server_region === server.region && kane.server_identifier === server.id) {
+                        if (kane.server_region === server.region && kane.server_identifier === server.id && sinceConvert(new Date(kane.lastupdate), TimeIn.MINUTES) < 5) {
                             utils_getLocationSystem().smartMove(kane, "kane");
                             return;
                         }

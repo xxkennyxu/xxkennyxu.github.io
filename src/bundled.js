@@ -7,30 +7,46 @@ var __webpack_exports__ = {};
 var AlDataClient = /** @class */ (function () {
     function AlDataClient() {
     }
-    // constructor() {
-    // 	AlDataClient.alData[Server.ASIA_1] = [];
-    // 	AlDataClient.alData[Server.US_1] = [];
-    // 	AlDataClient.alData[Server.US_2] = [];
-    // 	AlDataClient.alData[Server.US_3] = [];
-    // 	AlDataClient.alData[Server.US_PVP] = [];
-    // 	AlDataClient.alData[Server.EU_1] = [];
-    // 	AlDataClient.alData[Server.EU_2] = [];
-    // 	AlDataClient.alData[Server.EU_PVP] = [];
-    // }
-    AlDataClient.fetch = function () {
+    AlDataClient.fetchNpcInfo = function () {
+        //create XMLHttpRequest object
+        var xhr = new XMLHttpRequest();
+        //triggered when the response is completed
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                //parse JSON datax`x
+                var data = JSON.parse(xhr.responseText);
+                var eventNames_1 = [];
+                data.forEach(function (alNpcInfoData) {
+                    if (!AlDataClient.alNPCInfo[alNpcInfoData.name]) {
+                        AlDataClient.alNPCInfo[alNpcInfoData.name] = [];
+                        eventNames_1.push(alNpcInfoData.name);
+                    }
+                    AlDataClient.alNPCInfo[alNpcInfoData.name].push(alNpcInfoData);
+                });
+            }
+            else if (xhr.status === 404) {
+                console.log("No records found");
+            }
+        };
+        //open a get request with the remote server URL
+        xhr.open("GET", "https://aldata.info/api/NPCInfo");
+        //send the Http request
+        xhr.send();
+    };
+    AlDataClient.fetchWorldBosses = function () {
         var cachedData = get("alData");
         if (cachedData && cachedData.time && cachedData.data) {
             // if data is less than 45 minutes old, re-use
             var timePassedInMinutes = sinceConvert(new Date(cachedData.time), TimeIn.MINUTES);
             if (timePassedInMinutes < 45) {
-                AlDataClient.alData = cachedData.data;
+                AlDataClient.alWbData = cachedData.data;
                 if (character.name === "Zett") {
                     debugLog("Loading cached data " + timePassedInMinutes + "mins...", "cacheAlData", 60000);
                 }
                 return;
             }
             else {
-                AlDataClient.alData = {};
+                AlDataClient.alWbData = {};
             }
         }
         //create XMLHttpRequest object
@@ -40,13 +56,13 @@ var AlDataClient = /** @class */ (function () {
             if (xhr.status === 200) {
                 //parse JSON datax`x
                 var data = JSON.parse(xhr.responseText);
-                var eventNames_1 = [];
+                var eventNames_2 = [];
                 data.forEach(function (alResponseData) {
-                    if (!AlDataClient.alData[alResponseData.eventname]) {
-                        AlDataClient.alData[alResponseData.eventname] = [];
-                        eventNames_1.push(alResponseData.eventname);
+                    if (!AlDataClient.alWbData[alResponseData.eventname]) {
+                        AlDataClient.alWbData[alResponseData.eventname] = [];
+                        eventNames_2.push(alResponseData.eventname);
                     }
-                    AlDataClient.alData[alResponseData.eventname].push(alResponseData);
+                    AlDataClient.alWbData[alResponseData.eventname].push(alResponseData);
                     // let serverKey: Server;
                     // if (alResponseData.server_identifier === "US") {
                     // 	switch (alResponseData.server_region) {
@@ -72,7 +88,7 @@ var AlDataClient = /** @class */ (function () {
                     // 	AlDataClient.alData[serverKey].push(alResponseData);
                     // }
                 });
-                eventNames_1.forEach(function (name) { return AlDataClient.alData[name].sort(function (a, b) {
+                eventNames_2.forEach(function (name) { return AlDataClient.alWbData[name].sort(function (a, b) {
                     if (a.live && b.live)
                         return 0;
                     if (a.live && !b.live)
@@ -86,7 +102,7 @@ var AlDataClient = /** @class */ (function () {
                 // CACHING
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 var alCache = {};
-                alCache["data"] = AlDataClient.alData;
+                alCache["data"] = AlDataClient.alWbData;
                 alCache["time"] = new Date();
                 set("alData", alCache);
             }
@@ -100,7 +116,7 @@ var AlDataClient = /** @class */ (function () {
         xhr.send();
     };
     AlDataClient.shiftExpired = function () {
-        for (var _i = 0, _a = Object.entries(AlDataClient.alData); _i < _a.length; _i++) {
+        for (var _i = 0, _a = Object.entries(AlDataClient.alWbData); _i < _a.length; _i++) {
             var _b = _a[_i], key = _b[0], alDataList = _b[1];
             if (alDataList.length) {
                 var parentBoss = getParentWorldBoss(key);
@@ -128,11 +144,12 @@ var AlDataClient = /** @class */ (function () {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         var alCache = {};
         alCache["time"] = get("alData").time;
-        alCache["data"] = AlDataClient.alData;
+        alCache["data"] = AlDataClient.alWbData;
         set("alData", alCache);
         game_log("updated cache!");
     };
-    AlDataClient.alData = {};
+    AlDataClient.alWbData = {};
+    AlDataClient.alNPCInfo = {};
     return AlDataClient;
 }());
 
@@ -214,8 +231,8 @@ function getParentWorldBoss(bossName) {
     return worldBosses[bossName];
 }
 function getAlWorldBoss(bossName) {
-    if (AlDataClient.alData[bossName] && AlDataClient.alData[bossName].length) {
-        var alWorldBossData = AlDataClient.alData[bossName][0];
+    if (AlDataClient.alWbData[bossName] && AlDataClient.alWbData[bossName].length) {
+        var alWorldBossData = AlDataClient.alWbData[bossName][0];
         // AlDataClient.alData[bossName].forEach(adata => console.log(`${adata.eventname} (${adata.live}) ${adata.spawn}`));
         return WorldBoss.create(alWorldBossData);
     }
@@ -592,7 +609,7 @@ var CharacterFunction = /** @class */ (function () {
         addGlobalFunctions();
         modifyUi();
         parent.loginDate = new Date(); // prevent spam change_server
-        setInterval(function () { return AlDataClient.fetch(); }, 5000);
+        setInterval(function () { return AlDataClient.fetchWorldBosses(); }, 5000);
     };
     CharacterFunction.prototype.hpPotUse = function () {
         if (is_on_cooldown("use_hp") || safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
@@ -1908,6 +1925,7 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
+
 var whitelistedWorldBosses = ["snowman"];
 var worldBossSmartMoveLocation = {
     "snowman": SNOWMAN
@@ -1926,6 +1944,20 @@ var SoloLocation = /** @class */ (function (_super) {
         // TODO: grinch is special, remove after event is over
         var grinch = getAlWorldBoss("grinch");
         if (parent.S.grinch.live) {
+            if (parent.S.grinch.hp < 1000000) { // try to move to kane when less than 1m hp
+                if (canCall("fetchNpcInfo", "alData", 5000)) {
+                    AlDataClient.fetchNpcInfo();
+                }
+                if (AlDataClient.alNPCInfo.Kane.length > 0) {
+                    for (var i = 0; i < AlDataClient.alNPCInfo.Kane.length; i++) {
+                        var kane = AlDataClient.alNPCInfo.Kane[i];
+                        if (kane.server_region === server.region && kane.server_identifier === server.id) {
+                            utils_getLocationSystem().smartMove(kane, "kane");
+                            return;
+                        }
+                    }
+                }
+            }
             if (!this.previousGrinchLocation) {
                 this.previousGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
             }

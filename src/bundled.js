@@ -475,6 +475,14 @@ function zUi() {
         iframe.contentDocument.body.getElementsByTagName("div")[1].style.fontSize = "15px";
     }
 }
+function getRealCharactersData() {
+    var mainWindow = parent.global ? parent : parent.parent.parent;
+    var iframes = mainWindow.$('iframe');
+    return Array.from(Array(iframes.length).keys()).map(function (index) { return iframes[index].contentWindow.character; }).reduce(function (chars, char) {
+        chars[char.id] = char;
+        return chars;
+    }, {});
+}
 function zGiveaway() {
     for (var id in parent.entities) {
         var entity = parent.entities[id];
@@ -1940,15 +1948,14 @@ var SoloLocation = /** @class */ (function (_super) {
         parent.currentLocation = "?";
         return _this;
     }
-    SoloLocation.prototype.tick = function () {
-        // TODO: grinch is special, remove after event is over
-        var grinch = getAlWorldBoss("grinch");
+    SoloLocation.prototype.beforeBusy = function () {
+        var _a;
         if (parent.S.grinch.live) {
             if (parent.S.grinch.hp < 1000000) { // try to move to kane when less than 1m hp
-                if (canCall("fetchNpcInfo", "alData", 5000)) {
+                if (!AlDataClient.alNPCInfo.Kane && canCall("fetchNpcInfo", "alData", 5000)) {
                     AlDataClient.fetchNpcInfo();
                 }
-                if (AlDataClient.alNPCInfo.Kane.length > 0) {
+                if (((_a = AlDataClient.alNPCInfo.Kane) === null || _a === void 0 ? void 0 : _a.length) > 0) {
                     for (var i = 0; i < AlDataClient.alNPCInfo.Kane.length; i++) {
                         var kane = AlDataClient.alNPCInfo.Kane[i];
                         if (kane.server_region === server.region && kane.server_identifier === server.id && sinceConvert(new Date(kane.lastupdate), TimeIn.MINUTES) < 5) {
@@ -1969,6 +1976,13 @@ var SoloLocation = /** @class */ (function (_super) {
                 }
                 this.previousGrinchLocation = currentGrinchLocation;
             }
+        }
+    };
+    SoloLocation.prototype.tick = function () {
+        // TODO: grinch is special, remove after event is over
+        var grinch = getAlWorldBoss("grinch");
+        if (parent.S.grinch.live) {
+            // no-op, handled in beforeBusy()
         }
         else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
             changeServer(grinch.serverRegion, grinch.serverIdentifier);

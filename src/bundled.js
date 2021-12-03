@@ -238,6 +238,11 @@ function getAlWorldBoss(bossName) {
     }
     return null;
 }
+/**
+ * TODO: This is bad; using string html elements requires the browser to parse the data and then create/insert the dom element
+ *
+ * Instead, the better way would be to create DOM elments and re-using them and hiding/showing them if needed
+ */
 function createDivWithColor(text, color, size) {
     return "<div style=\"" + (size ? "font-size:" + size + "px;" : "") + " color:" + color + "; display: inline; padding-bottom: 1px; padding-top: 1px;\">" + text + "</div>";
 }
@@ -1887,6 +1892,7 @@ var LocationSystem = /** @class */ (function (_super) {
             close_stand();
         this.destination = dest;
         this.destinationName = destinationName;
+        this.lastDestinationChangeAt = new Date();
         this.setLocation(destinationName);
         return smart_move(dest);
     };

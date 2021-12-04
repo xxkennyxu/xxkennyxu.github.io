@@ -1629,7 +1629,7 @@ var InventorySystem = /** @class */ (function (_super) {
         }
     };
     InventorySystem.prototype.storage = function (threshold, storeCond) {
-        if (threshold === void 0) { threshold = 42; }
+        if (threshold === void 0) { threshold = 36; }
         if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
         var num_items = this.inventorySize();
         if (num_items >= threshold) {
@@ -2548,7 +2548,7 @@ var UseMerchant = /** @class */ (function (_super) {
     UseMerchant.prototype.transferItemsToMerchant = function () {
         var inventorySize = this.inventorySize();
         var maybeTarget = get_player(InventorySystem.merchantName);
-        if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 10000)) {
+        if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 30000)) {
             this.useMerchant();
         }
         else if (get_party()[InventorySystem.merchantName] && inventorySize > C_INVENTORY_DEFAULT_SIZE + this.newItemThreshold) {
@@ -2777,7 +2777,7 @@ var Upgrading = /** @class */ (function () {
         else if (this._stateMachine.currentState === UpgradingState.MOVING_REFINER) {
             if (smart.moving)
                 return;
-            else if (distance(character, SCROLL_NPC) < 100) {
+            else if (distance(character, SCROLL_NPC) < 50) {
                 this._stateMachine.currentState = UpgradingState.PREPARING;
             }
             else {
@@ -2813,7 +2813,7 @@ var Upgrading = /** @class */ (function () {
         }
     };
     Upgrading.prototype.searchForTargetItem = function () {
-        var takeItemCount = Math.max(0, 40 - getInventorySystem().inventorySize());
+        var takeItemCount = Math.max(0, 35 - getInventorySystem().inventorySize());
         if (takeItemCount === 0)
             return;
         var itemTakenCount = 0;
@@ -2844,7 +2844,10 @@ var Upgrading = /** @class */ (function () {
         }
     };
     Upgrading.prototype.handlePreparing = function () {
-        if (this._targetItem.upgradeType === UpgradeType.UPGRADE) {
+        if (!smart.moving && distance(character, SCROLL_NPC) > 10) {
+            utils_getLocationSystem().smartMove("scrolls", "scrolls");
+        }
+        else if (this._targetItem.upgradeType === UpgradeType.UPGRADE) {
             var item_idx = this._targetItem.maxRefine === -1 ? locate_item(this._targetItem.name)
                 : getInventorySystem().findItem({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
             var grade = item_grade(character.items[item_idx]);
@@ -2984,7 +2987,7 @@ var Cleaning = /** @class */ (function () {
         // TODO:
     };
     Cleaning.prototype.getItemsFromBank = function () {
-        var takeItemCount = Math.max(0, 40 - getInventorySystem().inventorySize());
+        var takeItemCount = Math.max(0, 35 - getInventorySystem().inventorySize());
         if (takeItemCount === 0)
             return;
         var itemTakenCount = 0;

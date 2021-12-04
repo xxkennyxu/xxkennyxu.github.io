@@ -1819,12 +1819,10 @@ var Upgrading = /** @class */ (function () {
             if (item.name === this._lastTargetItem.name)
                 itemIdxs.push(i);
         }
-        if (itemIdxs.length) {
-            getInventorySystem().bankItems(itemIdxs);
-        }
+        getInventorySystem().bankItems(itemIdxs);
     };
     Upgrading.prototype.handlePreparing = function () {
-        if (!smart.moving && distance(character, SCROLL_NPC) > 10) {
+        if (!smart.moving && distance(character, SCROLL_NPC) > 50) {
             utils_getLocationSystem().smartMove("scrolls", "scrolls");
         }
         else if (this._targetItem.upgradeType === UpgradeType.UPGRADE) {
@@ -1975,7 +1973,6 @@ var InventorySystem = /** @class */ (function (_super) {
     };
     InventorySystem.prototype.bankItems = function (itemIdxs) {
         if (!itemIdxs.length) {
-            game_log("no items to be stored");
             return;
         }
         var numItemsStored = 0;

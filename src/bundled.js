@@ -2527,11 +2527,13 @@ var useMerchant_extends = (undefined && undefined.__extends) || (function () {
 var C_SEND_ITEM_DISTANCE = 400;
 var C_MERCHANT_SEND_GOLD_THRESHOLD = 500000;
 var C_INVENTORY_DEFAULT_SIZE = 3; // 2 pots + tracker
-var C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD = C_INVENTORY_DEFAULT_SIZE + 2;
 var UseMerchant = /** @class */ (function (_super) {
     useMerchant_extends(UseMerchant, _super);
-    function UseMerchant() {
-        return _super !== null && _super.apply(this, arguments) || this;
+    function UseMerchant(newItemThreshold) {
+        if (newItemThreshold === void 0) { newItemThreshold = 2; }
+        var _this = _super.call(this) || this;
+        _this.newItemThreshold = newItemThreshold;
+        return _this;
     }
     UseMerchant.prototype.beforeBusy = function () {
         _super.prototype.beforeBusy.call(this);
@@ -2549,7 +2551,7 @@ var UseMerchant = /** @class */ (function (_super) {
         if (maybeTarget && distance(character, maybeTarget) < C_SEND_ITEM_DISTANCE && canCall("useMerchant", this.getName(), 10000)) {
             this.useMerchant();
         }
-        else if (get_party()[InventorySystem.merchantName] && inventorySize > C_MERMCHANT_INVENTORY_NEW_ITEMS_THRESHOLD) {
+        else if (get_party()[InventorySystem.merchantName] && inventorySize > C_INVENTORY_DEFAULT_SIZE + this.newItemThreshold) {
             sendComeToMeCommand(InventorySystem.merchantName);
         }
     };
@@ -3255,10 +3257,10 @@ new SoloLocation(BAT_BOSS, 5), new LoggingSystem(), new PartySystem().setPartyLe
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
 // new KiteCombat(),
-new SoloCombat(), new UseMerchant(), new SoloLocation(BAT1, 5), 
+new SoloCombat(), new UseMerchant(4), new SoloLocation(BAT1, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
-characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(), 
+characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(3), 
 // new FollowPartyLocation(),
 new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));

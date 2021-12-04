@@ -1819,7 +1819,9 @@ var Upgrading = /** @class */ (function () {
             if (item.name === this._lastTargetItem.name)
                 itemIdxs.push(i);
         }
-        getInventorySystem().bankItems(itemIdxs);
+        if (itemIdxs.length) {
+            getInventorySystem().bankItems(itemIdxs);
+        }
     };
     Upgrading.prototype.handlePreparing = function () {
         if (!smart.moving && distance(character, SCROLL_NPC) > 10) {

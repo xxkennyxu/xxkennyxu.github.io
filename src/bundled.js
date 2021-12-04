@@ -1576,6 +1576,329 @@ var NoOpCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
+;// CONCATENATED MODULE: ./src/characters/merchant/config.ts
+
+
+var MerchantConfig = /** @class */ (function () {
+    function MerchantConfig() {
+    }
+    MerchantConfig.MERCHANT_SKILLS = new MerchantSkills();
+    MerchantConfig.UPGRADE_LIST = [
+        // new UpgradeItem("gloves", 1),
+        // new UpgradeItem("coat1", 7),
+        // new UpgradeItem("pants1", 7),
+        // new UpgradeItem("shoes1", 7),
+        // new UpgradeItem("helmet1", 7),
+        // new UpgradeItem("stinger", 8),
+        new UpgradeItem("gcape", 7),
+        new UpgradeItem("wcap", 7),
+        new UpgradeItem("wshoes", 7),
+        new UpgradeItem("wbreeches", 7),
+        new UpgradeItem("wattire", 7),
+        new UpgradeItem("wgloves", 7),
+        new UpgradeItem("slimestaff", 7),
+        new UpgradeItem("phelmet", 7),
+        new UpgradeItem("sshield", 7),
+        new UpgradeItem("firestaff", 7),
+        new UpgradeItem("fireblade", 7),
+        new UpgradeItem("mcape", 6),
+        new UpgradeItem("ringsj", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("wbook0", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("strring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("intring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("dexring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("vitring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("strearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("intearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("dexearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("vitearring", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("dexamulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("stramulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("vitamulet", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("intamulet", 3, UpgradeType.COMPOUND),
+    ];
+    MerchantConfig.VEND_LIST = [
+    // { level: 3, name: "ringsj" },
+    // { level: 3, name: "hpamulet" },
+    // { level: 3, name: "hpbelt" },
+    ];
+    MerchantConfig.SELL_LIST = [
+        { name: "xmace" },
+        { name: "iceskates" },
+        { name: "gloves" },
+    ];
+    return MerchantConfig;
+}());
+
+
+;// CONCATENATED MODULE: ./src/characters/merchant/upgrading.ts
+
+
+
+
+var UpgradingState;
+(function (UpgradingState) {
+    UpgradingState[UpgradingState["IDLING"] = 0] = "IDLING";
+    UpgradingState[UpgradingState["MOVING_BANK"] = 1] = "MOVING_BANK";
+    UpgradingState[UpgradingState["ARRIVING_BANK"] = 2] = "ARRIVING_BANK";
+    UpgradingState[UpgradingState["SEARCHING_BANK"] = 3] = "SEARCHING_BANK";
+    UpgradingState[UpgradingState["STORING_BANK"] = 4] = "STORING_BANK";
+    UpgradingState[UpgradingState["MOVING_REFINER"] = 5] = "MOVING_REFINER";
+    UpgradingState[UpgradingState["PREPARING"] = 6] = "PREPARING";
+    UpgradingState[UpgradingState["STARTING_UPGRADE"] = 7] = "STARTING_UPGRADE";
+    UpgradingState[UpgradingState["UPGRADING"] = 8] = "UPGRADING";
+    UpgradingState[UpgradingState["UPGRADING_COMPLETE"] = 9] = "UPGRADING_COMPLETE";
+})(UpgradingState || (UpgradingState = {}));
+var C_MERCHANT_OPENED_BANKS = 8;
+var SCROLL_NPC = find_npc(G.npcs.scrolls.id);
+var Upgrading = /** @class */ (function () {
+    function Upgrading() {
+        this._stateMachine = new StateMachine(createDivWithColor("&#128296;", "", 10), function (state) { return UpgradingState[state]; }, true);
+        this._stateMachine.currentState = UpgradingState.IDLING;
+        this._upgradeQueue = [];
+        this.startRefineQueueUpdater();
+    }
+    Object.defineProperty(Upgrading.prototype, "stateMachine", {
+        get: function () {
+            return this._stateMachine;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Upgrading.prototype.hasItems = function () {
+        return this._upgradeQueue.length > 0;
+    };
+    Upgrading.prototype.startRefineQueueUpdater = function () {
+        var _this = this;
+        setInterval(function () {
+            for (var i = 0; i < MerchantConfig.UPGRADE_LIST.length; i++) {
+                var checkUpgradeItem = MerchantConfig.UPGRADE_LIST[i];
+                if (Upgrading.canRefineItem(checkUpgradeItem)) {
+                    // if upgrade queue has the item, skip
+                    for (var j = 0; j < _this._upgradeQueue.length; j++) {
+                        if (_this._upgradeQueue[j].name === checkUpgradeItem.name)
+                            return;
+                    }
+                    game_log("Adding " + checkUpgradeItem.name + " to the queue");
+                    _this._upgradeQueue.push(checkUpgradeItem);
+                }
+            }
+        }, 1000);
+    };
+    Upgrading.canRefineItem = function (upgradeItem, inventory) {
+        if (inventory === void 0) { inventory = character.items; }
+        if (upgradeItem.upgradeType == UpgradeType.COMPOUND) {
+            var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine }, inventory);
+            if (!items)
+                return false;
+            var item_matrix = [];
+            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+                item_matrix.push([]);
+                for (var i = 0; i < items.length; i++) {
+                    if (character.items[items[i]].level === i_lvl)
+                        item_matrix[i_lvl].push(items[i]);
+                }
+            }
+            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+                if (item_matrix[i_lvl].length >= 3) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else {
+            var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
+                : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine }, inventory);
+            return item_idx != -1;
+        }
+    };
+    Upgrading.prototype.tick = function () {
+        if (this._stateMachine.currentState === UpgradingState.IDLING) {
+            this._targetItem = this._upgradeQueue[0];
+            if (character.map != "bank")
+                utils_getLocationSystem().smartMove("bank", "bank");
+            this._stateMachine.currentState = UpgradingState.MOVING_BANK;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.MOVING_BANK) {
+            if (smart.moving)
+                return;
+            else if (character.map === "bank") {
+                this._stateMachine.currentState = UpgradingState.ARRIVING_BANK;
+            }
+            else {
+                utils_getLocationSystem().smartMove("bank", "bank");
+            }
+        }
+        else if (this._stateMachine.currentState === UpgradingState.ARRIVING_BANK) {
+            if (this._targetItem)
+                this._stateMachine.currentState = UpgradingState.SEARCHING_BANK;
+            else if (this._lastTargetItem)
+                this._stateMachine.currentState = UpgradingState.STORING_BANK;
+            else
+                throw new Error("State Error in " + UpgradingState[UpgradingState.ARRIVING_BANK]);
+        }
+        else if (this._stateMachine.currentState === UpgradingState.SEARCHING_BANK) {
+            this.searchForTargetItem();
+            utils_getLocationSystem().smartMove("scrolls", "scrolls");
+            this._stateMachine.currentState = UpgradingState.MOVING_REFINER;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.STORING_BANK) {
+            this.storeLastTargetItem();
+            this._lastTargetItem = null;
+            this._upgradeQueue.shift();
+            this._stateMachine.currentState = UpgradingState.IDLING;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.MOVING_REFINER) {
+            if (smart.moving)
+                return;
+            else if (distance(character, SCROLL_NPC) < 50) {
+                this._stateMachine.currentState = UpgradingState.PREPARING;
+            }
+            else {
+                utils_getLocationSystem().smartMove("scrolls", "scrolls");
+            }
+        }
+        else if (this._stateMachine.currentState === UpgradingState.PREPARING) {
+            this.handlePreparing();
+            this._stateMachine.currentState = UpgradingState.STARTING_UPGRADE;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.STARTING_UPGRADE) {
+            this.handleUpgrading();
+            this._stateMachine.currentState = UpgradingState.UPGRADING;
+        }
+        else if (this._stateMachine.currentState === UpgradingState.UPGRADING) {
+            if (isQBusy())
+                return; // mid-upgrade
+            else if (Upgrading.canRefineItem(this._targetItem)) {
+                this._stateMachine.currentState = UpgradingState.PREPARING;
+            }
+            else {
+                this._stateMachine.currentState = UpgradingState.UPGRADING_COMPLETE;
+            }
+        }
+        else if (this._stateMachine.currentState === UpgradingState.UPGRADING_COMPLETE) {
+            this._lastTargetItem = this._upgradeQueue[0];
+            this._targetItem = null;
+            utils_getLocationSystem().smartMove("bank", "bank");
+            this._stateMachine.currentState = UpgradingState.MOVING_BANK;
+        }
+        else {
+            throw new Error("Don't recognize state: " + UpgradingState[this._stateMachine.currentState]);
+        }
+    };
+    Upgrading.prototype.searchForTargetItem = function () {
+        var takeItemCount = Math.max(0, 35 - getInventorySystem().inventorySize());
+        if (takeItemCount === 0)
+            return;
+        var itemTakenCount = 0;
+        for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
+            var packName = "items" + packNum;
+            if (!character.bank[packName])
+                continue;
+            var item = this._targetItem;
+            var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
+            if (itemIdxs) {
+                for (var idx = 0; idx < itemIdxs.length; idx++) {
+                    if (itemTakenCount === takeItemCount)
+                        return;
+                    game_log("Getting " + item.name + " on " + packName + ": " + idx);
+                    bank_retrieve(packName, itemIdxs[idx]);
+                    itemTakenCount++;
+                }
+            }
+        }
+    };
+    Upgrading.prototype.storeLastTargetItem = function () {
+        var itemIdxs = [];
+        for (var i = 0; i < character.items.length; i++) {
+            var item = character.items[i];
+            if (!item)
+                continue;
+            if (item.name === this._lastTargetItem.name)
+                itemIdxs.push(i);
+        }
+        getInventorySystem().bankItems(itemIdxs);
+    };
+    Upgrading.prototype.handlePreparing = function () {
+        if (!smart.moving && distance(character, SCROLL_NPC) > 10) {
+            utils_getLocationSystem().smartMove("scrolls", "scrolls");
+        }
+        else if (this._targetItem.upgradeType === UpgradeType.UPGRADE) {
+            var item_idx = this._targetItem.maxRefine === -1 ? locate_item(this._targetItem.name)
+                : getInventorySystem().findItem({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
+            var grade = item_grade(character.items[item_idx]);
+            var scrollIdx = locate_item("scroll" + grade);
+            if (scrollIdx === -1) {
+                buy("scroll" + grade);
+            }
+        }
+        else {
+            var items = getInventorySystem().findItems({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
+            var item_matrix = [];
+            for (var i_lvl = 0; i_lvl < this._targetItem.maxRefine; i_lvl++) {
+                item_matrix.push([]);
+                for (var i = 0; i < items.length; i++) {
+                    if (character.items[items[i]].level === i_lvl)
+                        item_matrix[i_lvl].push(items[i]);
+                }
+            }
+            for (var i_lvl = 0; i_lvl < this._targetItem.maxRefine; i_lvl++) {
+                if (item_matrix[i_lvl].length >= 3) {
+                    items = item_matrix[i_lvl];
+                    var itemGrade = item_grade(character.items[items[0]]);
+                    if (locate_item("cscroll" + itemGrade) === -1) {
+                        buy("cscroll" + itemGrade);
+                    }
+                    return;
+                }
+            }
+        }
+    };
+    Upgrading.prototype.handleUpgrading = function () {
+        game_log("Upgrading " + this._targetItem.name);
+        buff(MerchantConfig.MERCHANT_SKILLS.massproductionpp);
+        if (this._targetItem.upgradeType === UpgradeType.COMPOUND) {
+            this.smartCompound(this._targetItem);
+        }
+        else {
+            this.smartUpgrade(this._targetItem);
+        }
+    };
+    Upgrading.prototype.smartUpgrade = function (upgradeItem) {
+        var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
+            : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+        var grade = item_grade(character.items[item_idx]);
+        var scroll_idx = locate_item("scroll" + grade);
+        getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
+        var upgrade_promise = upgrade(item_idx, scroll_idx);
+        return upgrade_promise;
+    };
+    Upgrading.prototype.smartCompound = function (upgradeItem) {
+        var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
+        var item_matrix = [];
+        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+            item_matrix.push([]);
+            for (var i = 0; i < items.length; i++) {
+                if (character.items[items[i]].level === i_lvl)
+                    item_matrix[i_lvl].push(items[i]);
+            }
+        }
+        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
+            if (item_matrix[i_lvl].length >= 3) {
+                items = item_matrix[i_lvl];
+                var grade = item_grade(character.items[items[0]]);
+                getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
+                return compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
+            }
+        }
+        throw new Error("Should not happen: " + this._stateMachine.currentState);
+    };
+    return Upgrading;
+}());
+
+
 ;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
 var inventory_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -1592,6 +1915,7 @@ var inventory_extends = (undefined && undefined.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+
 
 
 
@@ -1632,6 +1956,7 @@ var InventorySystem = /** @class */ (function (_super) {
         if (threshold === void 0) { threshold = 36; }
         if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
         var num_items = this.inventorySize();
+        var itemIdxs = [];
         if (num_items >= threshold) {
             return utils_getLocationSystem().smartMove("bank", "bank").then(function () {
                 for (var i = 0; i < character.items.length; i++) {
@@ -1639,10 +1964,31 @@ var InventorySystem = /** @class */ (function (_super) {
                     if (!item)
                         continue;
                     if (storeCond(item)) {
-                        bank_store(i);
+                        itemIdxs.push(i);
                     }
                 }
             });
+        }
+        this.bankItems(itemIdxs);
+    };
+    InventorySystem.prototype.bankItems = function (itemIdxs) {
+        if (!itemIdxs.length) {
+            game_log("no items to be stored");
+            return;
+        }
+        var numItemsStored = 0;
+        for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
+            var packName = "items" + packNum;
+            if (!character.bank[packName])
+                continue;
+            for (var i = 0; i < character.bank[packName].length; i++) {
+                if (!character.bank[packName][i]) {
+                    bank_store(itemIdxs[numItemsStored], packName, i);
+                    numItemsStored++;
+                    if (numItemsStored === itemIdxs.length)
+                        return;
+                }
+            }
         }
     };
     InventorySystem.prototype.inventorySize = function () {
@@ -2600,327 +2946,6 @@ var IsMerchant = /** @class */ (function (_super) {
 }(InventorySystem));
 
 
-;// CONCATENATED MODULE: ./src/characters/merchant/config.ts
-
-
-var MerchantConfig = /** @class */ (function () {
-    function MerchantConfig() {
-    }
-    MerchantConfig.MERCHANT_SKILLS = new MerchantSkills();
-    MerchantConfig.UPGRADE_LIST = [
-        // new UpgradeItem("gloves", 1),
-        // new UpgradeItem("coat1", 7),
-        // new UpgradeItem("pants1", 7),
-        // new UpgradeItem("shoes1", 7),
-        // new UpgradeItem("helmet1", 7),
-        // new UpgradeItem("stinger", 8),
-        new UpgradeItem("gcape", 7),
-        new UpgradeItem("wcap", 7),
-        new UpgradeItem("wshoes", 7),
-        new UpgradeItem("wbreeches", 7),
-        new UpgradeItem("wattire", 7),
-        new UpgradeItem("wgloves", 7),
-        new UpgradeItem("slimestaff", 7),
-        new UpgradeItem("phelmet", 7),
-        new UpgradeItem("sshield", 7),
-        new UpgradeItem("firestaff", 7),
-        new UpgradeItem("fireblade", 7),
-        new UpgradeItem("mcape", 6),
-        new UpgradeItem("ringsj", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("wbook0", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("strring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("intring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("dexring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("vitring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("strearring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("intearring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("dexearring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("vitearring", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("dexamulet", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("stramulet", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("vitamulet", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("intamulet", 3, UpgradeType.COMPOUND),
-    ];
-    MerchantConfig.VEND_LIST = [
-    // { level: 3, name: "ringsj" },
-    // { level: 3, name: "hpamulet" },
-    // { level: 3, name: "hpbelt" },
-    ];
-    MerchantConfig.SELL_LIST = [
-        { name: "xmace" },
-        { name: "iceskates" },
-        { name: "gloves" },
-    ];
-    return MerchantConfig;
-}());
-
-
-;// CONCATENATED MODULE: ./src/characters/merchant/upgrading.ts
-
-
-
-
-var UpgradingState;
-(function (UpgradingState) {
-    UpgradingState[UpgradingState["IDLING"] = 0] = "IDLING";
-    UpgradingState[UpgradingState["MOVING_BANK"] = 1] = "MOVING_BANK";
-    UpgradingState[UpgradingState["ARRIVING_BANK"] = 2] = "ARRIVING_BANK";
-    UpgradingState[UpgradingState["SEARCHING_BANK"] = 3] = "SEARCHING_BANK";
-    UpgradingState[UpgradingState["STORING_BANK"] = 4] = "STORING_BANK";
-    UpgradingState[UpgradingState["MOVING_REFINER"] = 5] = "MOVING_REFINER";
-    UpgradingState[UpgradingState["PREPARING"] = 6] = "PREPARING";
-    UpgradingState[UpgradingState["STARTING_UPGRADE"] = 7] = "STARTING_UPGRADE";
-    UpgradingState[UpgradingState["UPGRADING"] = 8] = "UPGRADING";
-    UpgradingState[UpgradingState["UPGRADING_COMPLETE"] = 9] = "UPGRADING_COMPLETE";
-})(UpgradingState || (UpgradingState = {}));
-var C_MERCHANT_OPENED_BANKS = 8;
-var SCROLL_NPC = find_npc(G.npcs.scrolls.id);
-var Upgrading = /** @class */ (function () {
-    function Upgrading() {
-        this._stateMachine = new StateMachine(createDivWithColor("&#128296;", "", 10), function (state) { return UpgradingState[state]; }, true);
-        this._stateMachine.currentState = UpgradingState.IDLING;
-        this._upgradeQueue = [];
-        this.startRefineQueueUpdater();
-    }
-    Object.defineProperty(Upgrading.prototype, "stateMachine", {
-        get: function () {
-            return this._stateMachine;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Upgrading.prototype.hasItems = function () {
-        return this._upgradeQueue.length > 0;
-    };
-    Upgrading.prototype.startRefineQueueUpdater = function () {
-        var _this = this;
-        setInterval(function () {
-            for (var i = 0; i < MerchantConfig.UPGRADE_LIST.length; i++) {
-                var checkUpgradeItem = MerchantConfig.UPGRADE_LIST[i];
-                if (Upgrading.canRefineItem(checkUpgradeItem)) {
-                    // if upgrade queue has the item, skip
-                    for (var j = 0; j < _this._upgradeQueue.length; j++) {
-                        if (_this._upgradeQueue[j].name === checkUpgradeItem.name)
-                            return;
-                    }
-                    game_log("Adding " + checkUpgradeItem.name + " to the queue");
-                    _this._upgradeQueue.push(checkUpgradeItem);
-                }
-            }
-        }, 1000);
-    };
-    Upgrading.canRefineItem = function (upgradeItem, inventory) {
-        if (inventory === void 0) { inventory = character.items; }
-        if (upgradeItem.upgradeType == UpgradeType.COMPOUND) {
-            var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine }, inventory);
-            if (!items)
-                return false;
-            var item_matrix = [];
-            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-                item_matrix.push([]);
-                for (var i = 0; i < items.length; i++) {
-                    if (character.items[items[i]].level === i_lvl)
-                        item_matrix[i_lvl].push(items[i]);
-                }
-            }
-            for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-                if (item_matrix[i_lvl].length >= 3) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        else {
-            var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
-                : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine }, inventory);
-            return item_idx != -1;
-        }
-    };
-    Upgrading.prototype.tick = function () {
-        if (this._stateMachine.currentState === UpgradingState.IDLING) {
-            this._targetItem = this._upgradeQueue[0];
-            if (character.map != "bank")
-                utils_getLocationSystem().smartMove("bank", "bank");
-            this._stateMachine.currentState = UpgradingState.MOVING_BANK;
-        }
-        else if (this._stateMachine.currentState === UpgradingState.MOVING_BANK) {
-            if (smart.moving)
-                return;
-            else if (character.map === "bank") {
-                this._stateMachine.currentState = UpgradingState.ARRIVING_BANK;
-            }
-            else {
-                utils_getLocationSystem().smartMove("bank", "bank");
-            }
-        }
-        else if (this._stateMachine.currentState === UpgradingState.ARRIVING_BANK) {
-            if (this._targetItem)
-                this._stateMachine.currentState = UpgradingState.SEARCHING_BANK;
-            else if (this._lastTargetItem)
-                this._stateMachine.currentState = UpgradingState.STORING_BANK;
-            else
-                throw new Error("State Error in " + UpgradingState[UpgradingState.ARRIVING_BANK]);
-        }
-        else if (this._stateMachine.currentState === UpgradingState.SEARCHING_BANK) {
-            this.searchForTargetItem();
-            utils_getLocationSystem().smartMove("scrolls", "scrolls");
-            this._stateMachine.currentState = UpgradingState.MOVING_REFINER;
-        }
-        else if (this._stateMachine.currentState === UpgradingState.STORING_BANK) {
-            this.storeLastTargetItem();
-            this._lastTargetItem = null;
-            this._upgradeQueue.shift();
-            this._stateMachine.currentState = UpgradingState.IDLING;
-        }
-        else if (this._stateMachine.currentState === UpgradingState.MOVING_REFINER) {
-            if (smart.moving)
-                return;
-            else if (distance(character, SCROLL_NPC) < 50) {
-                this._stateMachine.currentState = UpgradingState.PREPARING;
-            }
-            else {
-                utils_getLocationSystem().smartMove("scrolls", "scrolls");
-            }
-        }
-        else if (this._stateMachine.currentState === UpgradingState.PREPARING) {
-            this.handlePreparing();
-            this._stateMachine.currentState = UpgradingState.STARTING_UPGRADE;
-        }
-        else if (this._stateMachine.currentState === UpgradingState.STARTING_UPGRADE) {
-            this.handleUpgrading();
-            this._stateMachine.currentState = UpgradingState.UPGRADING;
-        }
-        else if (this._stateMachine.currentState === UpgradingState.UPGRADING) {
-            if (isQBusy())
-                return; // mid-upgrade
-            else if (Upgrading.canRefineItem(this._targetItem)) {
-                this._stateMachine.currentState = UpgradingState.PREPARING;
-            }
-            else {
-                this._stateMachine.currentState = UpgradingState.UPGRADING_COMPLETE;
-            }
-        }
-        else if (this._stateMachine.currentState === UpgradingState.UPGRADING_COMPLETE) {
-            this._lastTargetItem = this._upgradeQueue[0];
-            this._targetItem = null;
-            utils_getLocationSystem().smartMove("bank", "bank");
-            this._stateMachine.currentState = UpgradingState.MOVING_BANK;
-        }
-        else {
-            throw new Error("Don't recognize state: " + UpgradingState[this._stateMachine.currentState]);
-        }
-    };
-    Upgrading.prototype.searchForTargetItem = function () {
-        var takeItemCount = Math.max(0, 35 - getInventorySystem().inventorySize());
-        if (takeItemCount === 0)
-            return;
-        var itemTakenCount = 0;
-        for (var packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
-            var packName = "items" + packNum;
-            if (!character.bank[packName])
-                continue;
-            var item = this._targetItem;
-            var itemIdxs = getInventorySystem().findItems({ name: item.name, maxRefine: item.maxRefine }, character.bank[packName]);
-            if (itemIdxs) {
-                for (var idx = 0; idx < itemIdxs.length; idx++) {
-                    if (itemTakenCount === takeItemCount)
-                        return;
-                    game_log("Getting " + item.name + " on " + packName + ": " + idx);
-                    bank_retrieve(packName, itemIdxs[idx]);
-                    itemTakenCount++;
-                }
-            }
-        }
-    };
-    Upgrading.prototype.storeLastTargetItem = function () {
-        for (var i = 0; i < character.items.length; i++) {
-            var item = character.items[i];
-            if (!item)
-                continue;
-            if (item.name === this._lastTargetItem.name)
-                bank_store(i);
-        }
-    };
-    Upgrading.prototype.handlePreparing = function () {
-        if (!smart.moving && distance(character, SCROLL_NPC) > 10) {
-            utils_getLocationSystem().smartMove("scrolls", "scrolls");
-        }
-        else if (this._targetItem.upgradeType === UpgradeType.UPGRADE) {
-            var item_idx = this._targetItem.maxRefine === -1 ? locate_item(this._targetItem.name)
-                : getInventorySystem().findItem({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
-            var grade = item_grade(character.items[item_idx]);
-            var scrollIdx = locate_item("scroll" + grade);
-            if (scrollIdx === -1) {
-                buy("scroll" + grade);
-            }
-        }
-        else {
-            var items = getInventorySystem().findItems({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
-            var item_matrix = [];
-            for (var i_lvl = 0; i_lvl < this._targetItem.maxRefine; i_lvl++) {
-                item_matrix.push([]);
-                for (var i = 0; i < items.length; i++) {
-                    if (character.items[items[i]].level === i_lvl)
-                        item_matrix[i_lvl].push(items[i]);
-                }
-            }
-            for (var i_lvl = 0; i_lvl < this._targetItem.maxRefine; i_lvl++) {
-                if (item_matrix[i_lvl].length >= 3) {
-                    items = item_matrix[i_lvl];
-                    var itemGrade = item_grade(character.items[items[0]]);
-                    if (locate_item("cscroll" + itemGrade) === -1) {
-                        buy("cscroll" + itemGrade);
-                    }
-                    return;
-                }
-            }
-        }
-    };
-    Upgrading.prototype.handleUpgrading = function () {
-        game_log("Upgrading " + this._targetItem.name);
-        buff(MerchantConfig.MERCHANT_SKILLS.massproductionpp);
-        if (this._targetItem.upgradeType === UpgradeType.COMPOUND) {
-            this.smartCompound(this._targetItem);
-        }
-        else {
-            this.smartUpgrade(this._targetItem);
-        }
-    };
-    Upgrading.prototype.smartUpgrade = function (upgradeItem) {
-        var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
-            : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
-        var grade = item_grade(character.items[item_idx]);
-        var scroll_idx = locate_item("scroll" + grade);
-        getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
-        var upgrade_promise = upgrade(item_idx, scroll_idx);
-        return upgrade_promise;
-    };
-    Upgrading.prototype.smartCompound = function (upgradeItem) {
-        var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
-        var item_matrix = [];
-        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-            item_matrix.push([]);
-            for (var i = 0; i < items.length; i++) {
-                if (character.items[items[i]].level === i_lvl)
-                    item_matrix[i_lvl].push(items[i]);
-            }
-        }
-        for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
-            if (item_matrix[i_lvl].length >= 3) {
-                items = item_matrix[i_lvl];
-                var grade = item_grade(character.items[items[0]]);
-                getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
-                return compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
-            }
-        }
-        throw new Error("Should not happen: " + this._stateMachine.currentState);
-    };
-    return Upgrading;
-}());
-
-
 ;// CONCATENATED MODULE: ./src/characters/merchant/cleaning.ts
 
 
@@ -2978,9 +3003,11 @@ var Cleaning = /** @class */ (function () {
         }
     };
     Cleaning.prototype.bankItems = function () {
+        var itemIdxs = [];
         for (var i = 0; i < this._cleanQueue.length; i++) {
-            bank_store(this._cleanQueue[i].idx);
+            itemIdxs.push(this._cleanQueue[i].idx);
         }
+        getInventorySystem().bankItems(itemIdxs);
         this._cleanQueue = [];
     };
     Cleaning.prototype.sortBankItems = function () {

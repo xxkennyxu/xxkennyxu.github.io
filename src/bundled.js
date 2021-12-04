@@ -3257,10 +3257,10 @@ new SoloLocation(BAT_BOSS, 5), new LoggingSystem(), new PartySystem().setPartyLe
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
 // new KiteCombat(),
-new SoloCombat(), new UseMerchant(4), new SoloLocation(BAT1, 5), 
+new SoloCombat(), new UseMerchant(), new SoloLocation(BAT1, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
-characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(3), 
+characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(), 
 // new FollowPartyLocation(),
 new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));

@@ -1121,7 +1121,7 @@ var cms_INVENTORY = "INVENTORY";
 var INVENTORY_PREVIEW = "INVENTORY_PREVIEW";
 var BUFF_ME = "BUFF_ME";
 var CM_WHITELIST = ["Zettex", "Zetd", "Zett", "Zetchant", "Zetadin", "Zeter", "Zetx"];
-var C_CM_SEND_THRESHOLD = 15; // seconds
+var C_CM_SEND_THRESHOLD = 5; // seconds
 var CM_MAP = {
     COMING: sendComeToMeCommand,
     COME_TO_ME: movingToData,

@@ -1779,7 +1779,6 @@ var ZettWarrior = /** @class */ (function (_super) {
         // 		}
         // 	});
         // }
-        pause();
     };
     ZettWarrior.prototype.beforeBusy = function () {
         _super.prototype.beforeBusy.call(this);

@@ -1634,7 +1634,7 @@ var InventorySystem = /** @class */ (function (_super) {
         var num_items = this.inventorySize();
         var itemIdxs = [];
         if (num_items >= threshold) {
-            if (character.map != "bank") {
+            if (!smart.moving && character.map != "bank") {
                 return utils_getLocationSystem().smartMove("bank", "bank");
             }
             for (var i = 0; i < character.items.length; i++) {

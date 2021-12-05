@@ -1631,12 +1631,12 @@ var InventorySystem = /** @class */ (function (_super) {
     InventorySystem.prototype.storage = function (threshold, storeCond) {
         if (threshold === void 0) { threshold = 36; }
         if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
-        if (character.map != "bank") {
-            return utils_getLocationSystem().smartMove("bank", "bank");
-        }
         var num_items = this.inventorySize();
         var itemIdxs = [];
         if (num_items >= threshold) {
+            if (character.map != "bank") {
+                return utils_getLocationSystem().smartMove("bank", "bank");
+            }
             for (var i = 0; i < character.items.length; i++) {
                 var item = character.items[i];
                 if (!item)

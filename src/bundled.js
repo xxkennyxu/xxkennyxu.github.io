@@ -1880,6 +1880,9 @@ var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
 var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
 var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
 var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
+var BEE1 = SmartMoveLocation.create(530, 1070, "main", "bee1");
+var BEE2 = SmartMoveLocation.create(160, 1490, "main", "bee2");
+var BEE3 = SmartMoveLocation.create(635, 740, "main", "bee3");
 
 ;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
 var locationSystem_extends = (undefined && undefined.__extends) || (function () {
@@ -2066,8 +2069,8 @@ var SoloLocation = /** @class */ (function (_super) {
             }
         }
         // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
-        if (!bossSpawningSoon && ("PVP" != server.id || "US" != server.region)) {
-            changeServer("US", "PVP");
+        if (!bossSpawningSoon && ("PVP" != server.id || "EU" != server.region)) {
+            changeServer("EU", "PVP");
         }
         if (!nextLocation) {
             if (typeof this.mobDestination === "string") {
@@ -3288,16 +3291,16 @@ var Zetchant = /** @class */ (function () {
 var characters = {};
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant(), 
 // new SoloLocation("bat", "mvampire", 10),
-new SoloLocation(BAT_BOSS, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(BEE1, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
 // new KiteCombat(),
-new SoloCombat(), new UseMerchant(), new SoloLocation(BAT1, 5), 
+new SoloCombat(), new UseMerchant(), new SoloLocation(BEE2, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(), 
 // new FollowPartyLocation(),
-new SoloLocation(BAT2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(BEE3, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetchant"] = new Zetchant(new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]), new IsMerchant().setPotQtyThreshold(3000), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true));

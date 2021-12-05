@@ -3220,7 +3220,7 @@ var Zetchant = /** @class */ (function () {
             else {
                 _this.vending.tick();
             }
-        }, 1000);
+        }, 250);
     };
     Zetchant.prototype.legacyLoop = function () {
         var _this = this;

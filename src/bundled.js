@@ -1629,7 +1629,7 @@ var InventorySystem = /** @class */ (function (_super) {
         }
     };
     InventorySystem.prototype.storage = function (threshold, storeCond) {
-        if (threshold === void 0) { threshold = 36; }
+        if (threshold === void 0) { threshold = 40; }
         if (storeCond === void 0) { storeCond = function (item) { return !C_DO_NOT_STORE_ITEM.find(function (element) { return item.name.includes(element); }); }; }
         var num_items = this.inventorySize();
         var itemIdxs = [];
@@ -2741,6 +2741,7 @@ var Upgrading = /** @class */ (function () {
     Upgrading.canRefineItem = function (upgradeItem, inventory) {
         if (inventory === void 0) { inventory = character.items; }
         if (upgradeItem.upgradeType == UpgradeType.COMPOUND) {
+            // TODO: can optimize this by caching "active" item being upgraded instead of checking the entire inventory each time
             var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine }, inventory);
             if (!items)
                 return false;
@@ -2841,7 +2842,7 @@ var Upgrading = /** @class */ (function () {
         }
     };
     Upgrading.prototype.searchForTargetItem = function () {
-        var takeItemCount = Math.max(0, 35 - getInventorySystem().inventorySize());
+        var takeItemCount = Math.max(0, 39 - getInventorySystem().inventorySize());
         if (takeItemCount === 0)
             return;
         var itemTakenCount = 0;

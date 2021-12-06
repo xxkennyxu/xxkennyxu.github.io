@@ -1576,6 +1576,44 @@ var NoOpCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
+;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
+var SmartMoveLocation = /** @class */ (function () {
+    function SmartMoveLocation(x, y, map, name) {
+        this.x = x;
+        this.y = y;
+        this.map = map;
+        this.name = name;
+    }
+    SmartMoveLocation.create = function (x, y, map, name) {
+        return new SmartMoveLocation(x, y, map, name);
+    };
+    SmartMoveLocation.createName = function (name) {
+        return new SmartMoveLocation(null, null, null, name);
+    };
+    SmartMoveLocation.prototype.get = function () {
+        if (!this.x && !this.y && !this.map)
+            return this.name;
+        return this;
+    };
+    return SmartMoveLocation;
+}());
+
+var SmartLocations = /** @class */ (function () {
+    function SmartLocations() {
+    }
+    SmartLocations.TOWN = SmartMoveLocation.create(0, 0, "main", "town");
+    SmartLocations.OPEN_STAND = SmartMoveLocation.create(130, 0, "main", "open_stand");
+    return SmartLocations;
+}());
+
+var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
+var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
+var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
+var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
+var BEE1 = SmartMoveLocation.create(530, 1070, "main", "bee1");
+var BEE2 = SmartMoveLocation.create(160, 1490, "main", "bee2");
+var BEE3 = SmartMoveLocation.create(635, 740, "main", "bee3");
+
 ;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
 var inventory_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -1592,6 +1630,7 @@ var inventory_extends = (undefined && undefined.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+
 
 
 
@@ -1616,15 +1655,17 @@ var InventorySystem = /** @class */ (function (_super) {
         return this;
     };
     InventorySystem.prototype.restockPotionsAt = function (pot, useCmRestock) {
-        var _this = this;
         if (locate_item(pot) === -1 || character.items[locate_item(pot)].q < this.potQtyThreshold) {
             if (useCmRestock) {
                 sendBringPotionCommand(InventorySystem.merchantName, pot);
             }
             else {
-                utils_getLocationSystem().smartMove("town", "town").then(function () {
-                    buy(pot, _this.potQtyThreshold);
-                });
+                if (smart.moving)
+                    return;
+                else if (!isCharacterWithin(SmartLocations.TOWN, 100))
+                    utils_getLocationSystem().smartMove("town", "town");
+                else
+                    buy(pot, this.potQtyThreshold);
             }
         }
     };
@@ -1826,44 +1867,6 @@ var SoloCombat = /** @class */ (function (_super) {
     return SoloCombat;
 }(CombatSystem));
 
-
-;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
-var SmartMoveLocation = /** @class */ (function () {
-    function SmartMoveLocation(x, y, map, name) {
-        this.x = x;
-        this.y = y;
-        this.map = map;
-        this.name = name;
-    }
-    SmartMoveLocation.create = function (x, y, map, name) {
-        return new SmartMoveLocation(x, y, map, name);
-    };
-    SmartMoveLocation.createName = function (name) {
-        return new SmartMoveLocation(null, null, null, name);
-    };
-    SmartMoveLocation.prototype.get = function () {
-        if (!this.x && !this.y && !this.map)
-            return this.name;
-        return this;
-    };
-    return SmartMoveLocation;
-}());
-
-var SmartLocations = /** @class */ (function () {
-    function SmartLocations() {
-    }
-    SmartLocations.TOWN = SmartMoveLocation.create(0, 0, "main", "town");
-    SmartLocations.OPEN_STAND = SmartMoveLocation.create(130, 0, "main", "open_stand");
-    return SmartLocations;
-}());
-
-var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
-var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
-var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
-var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
-var BEE1 = SmartMoveLocation.create(530, 1070, "main", "bee1");
-var BEE2 = SmartMoveLocation.create(160, 1490, "main", "bee2");
-var BEE3 = SmartMoveLocation.create(635, 740, "main", "bee3");
 
 ;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
 var locationSystem_extends = (undefined && undefined.__extends) || (function () {
@@ -2950,8 +2953,9 @@ var Cleaning = /** @class */ (function () {
             this._stateMachine.currentState = CleaningState.MOVING_BANK;
         }
         else if (this._stateMachine.currentState === CleaningState.MOVING_BANK) {
-            if (smart.moving)
+            if (smart.moving || smart.searching) {
                 return;
+            }
             else if (character.map === "bank") {
                 this._stateMachine.currentState = CleaningState.BANKING;
             }

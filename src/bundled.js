@@ -2953,7 +2953,7 @@ var Cleaning = /** @class */ (function () {
             this._stateMachine.currentState = CleaningState.MOVING_BANK;
         }
         else if (this._stateMachine.currentState === CleaningState.MOVING_BANK) {
-            if (smart.moving || smart.searching) {
+            if (smart.moving) {
                 return;
             }
             else if (character.map === "bank") {

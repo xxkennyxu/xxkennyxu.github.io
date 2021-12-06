@@ -1652,25 +1652,6 @@ var InventorySystem = /** @class */ (function (_super) {
         for (var i = 0; i < itemIdxs.length; i++) {
             bank_store(itemIdxs[i]);
         }
-        /**
-        if (!itemIdxs.length) {
-            return;
-        }
-        let numItemsStored = 0;
-        for (let packNum = 0; packNum < C_MERCHANT_OPENED_BANKS; packNum++) {
-            const packName = `items${packNum}`;
-
-            if (!character.bank[packName]) continue;
-
-            for (let i = 0; i < character.bank[packName].length; i++) {
-                if (!character.bank[packName][i]) {
-                    bank_store(itemIdxs[numItemsStored], packName, i);
-                    numItemsStored++;
-                    if (numItemsStored === itemIdxs.length) return;
-                }
-            }
-        }
-        **/
     };
     InventorySystem.prototype.inventorySize = function () {
         var num_items = 0;
@@ -2681,6 +2662,7 @@ var MerchantConfig = /** @class */ (function () {
         { name: "xmace" },
         { name: "iceskates" },
         { name: "gloves" },
+        { name: "stinger" },
     ];
     return MerchantConfig;
 }());

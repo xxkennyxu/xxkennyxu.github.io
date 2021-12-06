@@ -2525,8 +2525,9 @@ var UseMerchant = /** @class */ (function (_super) {
         this.transferItemsToMerchant();
     };
     UseMerchant.prototype.tick = function () {
-        this.hpPotQty = character.items[locate_item(this.hpPotName)].q;
-        this.mpPotQty = character.items[locate_item(this.mpPotName)].q;
+        var _a, _b, _c, _d;
+        this.hpPotQty = (_b = (_a = character.items[locate_item(this.hpPotName)]) === null || _a === void 0 ? void 0 : _a.q) !== null && _b !== void 0 ? _b : 0;
+        this.mpPotQty = (_d = (_c = character.items[locate_item(this.mpPotName)]) === null || _c === void 0 ? void 0 : _c.q) !== null && _d !== void 0 ? _d : 0;
         this.restockPotionsAt(this.hpPotName, true);
         this.restockPotionsAt(this.mpPotName, true);
     };
@@ -2599,7 +2600,7 @@ var MerchantConfig = /** @class */ (function () {
         // new UpgradeItem("shoes1", 7),
         // new UpgradeItem("helmet1", 7),
         // new UpgradeItem("stinger", 8),
-        new UpgradeItem("bow", 7),
+        new UpgradeItem("bow", 6),
         new UpgradeItem("gcape", 7),
         new UpgradeItem("wcap", 7),
         new UpgradeItem("wshoes", 7),

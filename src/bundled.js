@@ -1060,8 +1060,8 @@ function bringPotionReply(name, data) {
 
 
 function sendComingRequest(name) {
-    var payload = cms_cmBuilder(COMING);
-    cms_sendCharacterMessage(name, payload);
+    var payload = cmBuilder(COMING);
+    sendCharacterMessage(name, payload);
 }
 function sendComeToMeCommand(name, data, isReply) {
     if (isReply === void 0) { isReply = false; }
@@ -1113,7 +1113,7 @@ function inventoryPreview(name, data) {
 
 
 
-var COMING = "COMING";
+var cms_COMING = "COMING";
 var COME_TO_ME = "COME_TO_ME";
 var cms_MOVE_TO = "MOVE_TO";
 var BRING_POTION = "BRING_POTION";
@@ -2473,47 +2473,6 @@ var ZetadinPaladin = /** @class */ (function (_super) {
 }(CharacterFunction));
 
 
-;// CONCATENATED MODULE: ./src/systems/location/followPartyLocation.ts
-var followPartyLocation_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-var FollowPartyLocation = /** @class */ (function (_super) {
-    followPartyLocation_extends(FollowPartyLocation, _super);
-    function FollowPartyLocation(followDistance) {
-        if (followDistance === void 0) { followDistance = 0; }
-        var _this = _super.call(this) || this;
-        _this.followDistance = followDistance;
-        return _this;
-    }
-    FollowPartyLocation.prototype.tick = function () {
-        var partyObject = get_party();
-        var partyLeaderName = getPartySystem().partyLeader;
-        var partyLeader = get_player(partyLeaderName);
-        if (partyObject[partyLeaderName] // do not change this 
-            && (!partyLeader
-                || !partyLeader.visible
-                || (this.followDistance && distance(character, partyLeader) > this.followDistance)))
-            sendComingRequest(partyLeaderName);
-    };
-    return FollowPartyLocation;
-}(LocationSystem));
-
-
 ;// CONCATENATED MODULE: ./src/systems/inventory/useMerchant.ts
 var useMerchant_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -3269,12 +3228,11 @@ var Zetchant = /** @class */ (function () {
 
 
 
-
 var characters = {};
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant(), 
 // new SoloLocation("bat", "mvampire", 10),
 new SoloLocation(BEE1, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
-characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation("bee", 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
+characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE1, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
 // new KiteCombat(),
 new SoloCombat(), new UseMerchant(), new SoloLocation(BEE2, 5), 
@@ -3283,9 +3241,9 @@ new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(), 
 // new FollowPartyLocation(),
 new SoloLocation(BEE3, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
-characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new FollowPartyLocation(), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
-characters["Zetchant"] = new Zetchant(new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]), new IsMerchant().setPotQtyThreshold(3000), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true));
+characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
+characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE3, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
+characters["Zetchant"] = new Zetchant(new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]), new IsMerchant().setPotQtyThreshold(3000), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true));
 function start_c(name, ms) {
     if (ms === void 0) { ms = 250; }
     game_log(">>> Invoking " + name);

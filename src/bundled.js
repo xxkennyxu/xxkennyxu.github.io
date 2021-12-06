@@ -2583,6 +2583,7 @@ var MerchantConfig = /** @class */ (function () {
         // new UpgradeItem("shoes1", 7),
         // new UpgradeItem("helmet1", 7),
         // new UpgradeItem("stinger", 8),
+        new UpgradeItem("bow", 7),
         new UpgradeItem("gcape", 7),
         new UpgradeItem("wcap", 7),
         new UpgradeItem("wshoes", 7),

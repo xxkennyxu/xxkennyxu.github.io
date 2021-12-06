@@ -2400,7 +2400,7 @@ var ZeterRanger = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     ZeterRanger.prototype.tick = function () {
-        throw new Error("Method not implemented.");
+        return;
     };
     ZeterRanger.prototype.getName = function () {
         return "Zeter";
@@ -2432,7 +2432,7 @@ var ZetxMage = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     ZetxMage.prototype.tick = function () {
-        throw new Error("Method not implemented.");
+        return;
     };
     ZetxMage.prototype.getName = function () {
         return "Zetx";
@@ -2458,13 +2458,29 @@ var zetadin_paladin_extends = (undefined && undefined.__extends) || (function ()
     };
 })();
 
+
+
 var ZetadinPaladin = /** @class */ (function (_super) {
     zetadin_paladin_extends(ZetadinPaladin, _super);
     function ZetadinPaladin() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
+    ZetadinPaladin.prototype.setup = function () {
+        _super.prototype.setup.call(this);
+        var partyMembers = getPartySystem().partyMembers;
+        for (var i = 0; i < partyMembers.length; i++) {
+            if (partyMembers[i] === character.name)
+                continue;
+            start_character(partyMembers[i], "webpack");
+        }
+        // TODO: this should be fleshed out or moved to web sockets
+        setInterval(function () { return AlDataClient.shiftExpired(); }, 10000); // DONT PRUNE TOO FAST OTHERWISE RACE CONDITION
+        setTimeout(function () {
+            zUi();
+        }, 30000);
+    };
     ZetadinPaladin.prototype.tick = function () {
-        throw new Error("Method not implemented.");
+        return;
     };
     ZetadinPaladin.prototype.getName = function () {
         return "Zetadin";

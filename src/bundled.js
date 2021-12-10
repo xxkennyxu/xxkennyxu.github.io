@@ -1306,7 +1306,7 @@ var combatSystem_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-var C_IGNORE_MONSTER = ["Target Automatron"];
+var C_IGNORE_MONSTER = ["Target Automatron", "Puppy"];
 var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr.", "Golden Bat"];
 var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
 var CombatDifficulty;
@@ -1613,6 +1613,9 @@ var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
 var BEE1 = SmartMoveLocation.create(530, 1070, "main", "bee1");
 var BEE2 = SmartMoveLocation.create(160, 1490, "main", "bee2");
 var BEE3 = SmartMoveLocation.create(635, 740, "main", "bee3");
+var POISIO = SmartMoveLocation.create(-170, 1290, "main", "poisio");
+var SQUIGTOAD = SmartMoveLocation.create(-1160, 560, "main", "squigtoad");
+var TORTOISE = SmartMoveLocation.create(-1127, 1080, "main", "tortoise");
 
 ;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
 var inventory_extends = (undefined && undefined.__extends) || (function () {
@@ -2846,6 +2849,9 @@ var Upgrading = /** @class */ (function () {
             var item_idx = this._targetItem.maxRefine === -1 ? locate_item(this._targetItem.name)
                 : getInventorySystem().findItem({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
             var grade = item_grade(character.items[item_idx]);
+            if (grade + 1 < 2) {
+                grade = 1;
+            }
             var scrollIdx = locate_item("scroll" + grade);
             if (scrollIdx === -1) {
                 buy("scroll" + grade);
@@ -2865,6 +2871,9 @@ var Upgrading = /** @class */ (function () {
                 if (item_matrix[i_lvl].length >= 3) {
                     items = item_matrix[i_lvl];
                     var itemGrade = item_grade(character.items[items[0]]);
+                    if (itemGrade + 1 < 2) {
+                        itemGrade = 1;
+                    }
                     if (locate_item("cscroll" + itemGrade) === -1) {
                         buy("cscroll" + itemGrade);
                     }
@@ -2887,6 +2896,9 @@ var Upgrading = /** @class */ (function () {
         var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
             : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
         var grade = item_grade(character.items[item_idx]);
+        if (grade + 1 < 2) {
+            grade = 1;
+        }
         var scroll_idx = locate_item("scroll" + grade);
         getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
         var upgrade_promise = upgrade(item_idx, scroll_idx);
@@ -2906,6 +2918,9 @@ var Upgrading = /** @class */ (function () {
             if (item_matrix[i_lvl].length >= 3) {
                 items = item_matrix[i_lvl];
                 var grade = item_grade(character.items[items[0]]);
+                if (grade + 1 < 2) {
+                    grade = 1;
+                }
                 getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");
                 return compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
             }
@@ -3253,16 +3268,16 @@ var Zetchant = /** @class */ (function () {
 var characters = {};
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant(), 
 // new SoloLocation("bat", "mvampire", 10),
-new SoloLocation(BEE1, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(SQUIGTOAD, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE1, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
 // new KiteCombat(),
-new SoloCombat(), new UseMerchant(), new SoloLocation(BEE2, 5), 
+new SoloCombat(), new UseMerchant(), new SoloLocation(TORTOISE, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(), 
 // new FollowPartyLocation(),
-new SoloLocation(BEE3, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(POISIO, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE3, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetchant"] = new Zetchant(new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]), new IsMerchant().setPotQtyThreshold(3000), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true));

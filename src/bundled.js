@@ -2842,7 +2842,8 @@ var Upgrading = /** @class */ (function () {
         }
         getInventorySystem().bankItems(itemIdxs);
     };
-    Upgrading.prototype.handlePreparing = function () {
+    Upgrading.prototype.handlePreparing = function (useHigherIngredients) {
+        if (useHigherIngredients === void 0) { useHigherIngredients = false; }
         if (!smart.moving && distance(character, SCROLL_NPC) > 50) {
             utils_getLocationSystem().smartMove("scrolls", "scrolls");
         }
@@ -2850,7 +2851,7 @@ var Upgrading = /** @class */ (function () {
             var item_idx = this._targetItem.maxRefine === -1 ? locate_item(this._targetItem.name)
                 : getInventorySystem().findItem({ name: this._targetItem.name, maxRefine: this._targetItem.maxRefine });
             var grade = item_grade(character.items[item_idx]);
-            if (grade + 1 < 2) {
+            if (useHigherIngredients && grade + 1 < 2) {
                 grade = 1;
             }
             var scrollIdx = locate_item("scroll" + grade);
@@ -2872,7 +2873,7 @@ var Upgrading = /** @class */ (function () {
                 if (item_matrix[i_lvl].length >= 3) {
                     items = item_matrix[i_lvl];
                     var itemGrade = item_grade(character.items[items[0]]);
-                    if (itemGrade + 1 < 2) {
+                    if (useHigherIngredients && itemGrade + 1 < 2) {
                         itemGrade = 1;
                     }
                     if (locate_item("cscroll" + itemGrade) === -1) {
@@ -2893,11 +2894,12 @@ var Upgrading = /** @class */ (function () {
             this.smartUpgrade(this._targetItem);
         }
     };
-    Upgrading.prototype.smartUpgrade = function (upgradeItem) {
+    Upgrading.prototype.smartUpgrade = function (upgradeItem, useHigherIngredients) {
+        if (useHigherIngredients === void 0) { useHigherIngredients = false; }
         var item_idx = upgradeItem.maxRefine === -1 ? locate_item(upgradeItem.name)
             : getInventorySystem().findItem({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
         var grade = item_grade(character.items[item_idx]);
-        if (grade + 1 < 2) {
+        if (useHigherIngredients && grade + 1 < 2) {
             grade = 1;
         }
         var scroll_idx = locate_item("scroll" + grade);
@@ -2905,7 +2907,8 @@ var Upgrading = /** @class */ (function () {
         var upgrade_promise = upgrade(item_idx, scroll_idx);
         return upgrade_promise;
     };
-    Upgrading.prototype.smartCompound = function (upgradeItem) {
+    Upgrading.prototype.smartCompound = function (upgradeItem, useHigherIngredients) {
+        if (useHigherIngredients === void 0) { useHigherIngredients = false; }
         var items = getInventorySystem().findItems({ name: upgradeItem.name, maxRefine: upgradeItem.maxRefine });
         var item_matrix = [];
         for (var i_lvl = 0; i_lvl < upgradeItem.maxRefine; i_lvl++) {
@@ -2919,7 +2922,7 @@ var Upgrading = /** @class */ (function () {
             if (item_matrix[i_lvl].length >= 3) {
                 items = item_matrix[i_lvl];
                 var grade = item_grade(character.items[items[0]]);
-                if (grade + 1 < 2) {
+                if (useHigherIngredients && grade + 1 < 2) {
                     grade = 1;
                 }
                 getLoggingSystem().addLogMessage("&#128296; " + upgradeItem.name, "t_upgrading");

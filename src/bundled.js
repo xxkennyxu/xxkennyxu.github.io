@@ -2646,6 +2646,7 @@ var MerchantConfig = /** @class */ (function () {
         { name: "iceskates" },
         { name: "gloves" },
         { name: "stinger" },
+        { name: "cclaw" },
     ];
     return MerchantConfig;
 }());

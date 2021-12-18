@@ -2647,6 +2647,7 @@ var MerchantConfig = /** @class */ (function () {
         { name: "gloves" },
         { name: "stinger" },
         { name: "cclaw" },
+        { name: "snowball" },
     ];
     return MerchantConfig;
 }());
@@ -3243,7 +3244,7 @@ var Zetchant = /** @class */ (function () {
                     continue;
                 for (var j = 0; j < MerchantConfig.SELL_LIST.length; j++) {
                     if (item.name === MerchantConfig.SELL_LIST[j].name)
-                        sell(i);
+                        sell(i, character.items[i].q);
                 }
             }
         }, 1000);

@@ -2619,6 +2619,7 @@ var MerchantConfig = /** @class */ (function () {
         new UpgradeItem("firestaff", 7),
         new UpgradeItem("fireblade", 7),
         new UpgradeItem("mcape", 6),
+        new UpgradeItem("shield", 7),
         new UpgradeItem("ringsj", 3, UpgradeType.COMPOUND),
         new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
         new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),

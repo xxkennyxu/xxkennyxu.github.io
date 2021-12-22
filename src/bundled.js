@@ -949,9 +949,12 @@ var ZetdPriest = /** @class */ (function (_super) {
         this.heal_party_members_percent(85);
         for (var id in parent.entities) {
             var current = parent.entities[id];
-            if (getCombatSystem().isBoss(current) && current.target && current.target != character.name && !current.s.cursed) {
-                useSkill(this.getSkills().curse, current);
-                break;
+            if ((getCombatSystem().isBoss(current) || getCombatSystem().isWorldBoss(current)) && current.target && current.target != character.name) {
+                useSkill(this.getSkills().darkblessing);
+                if (!current.s.cursed) {
+                    useSkill(this.getSkills().curse, current);
+                    break;
+                }
             }
         }
         getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.x === member.x && character.y === member.y; }, function () { return move(character.x + 5, character.y - 5); });

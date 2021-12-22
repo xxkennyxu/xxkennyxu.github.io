@@ -1820,6 +1820,9 @@ var ZettWarrior = /** @class */ (function (_super) {
                 && (getPartySystem().partyMembers.includes(tar.target));
         });
         getPartySystem().checkConditionOnPartyAndCount(function (member) { return character.name != member.name && character.real_x === member.real_x && character.real_y === member.real_y; }, function () { return move(character.x + 5, character.y + 5); });
+        if (getCombatSystem().stateMachine.currentState === CombatState.WB) {
+            useSkill(this.getSkills().warcry);
+        }
         if (!character.s.mluck)
             sendBuffRequest(InventorySystem.merchantName, "mluck");
     };

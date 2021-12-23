@@ -2550,7 +2550,9 @@ var UseMerchant = /** @class */ (function (_super) {
             this.useMerchant();
         }
         else if (get_party()[InventorySystem.merchantName] && inventorySize > C_INVENTORY_DEFAULT_SIZE + this.newItemThreshold) {
-            sendComeToMeCommand(InventorySystem.merchantName);
+            if (canCall("comeToMeMerchant", this.getName(), 30000)) {
+                sendComeToMeCommand(InventorySystem.merchantName);
+            }
         }
     };
     UseMerchant.prototype.useMerchant = function () {

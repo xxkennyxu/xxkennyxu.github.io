@@ -2632,7 +2632,7 @@ var MerchantConfig = /** @class */ (function () {
         new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
         new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),
         new UpgradeItem("wbook0", 3, UpgradeType.COMPOUND),
-        new UpgradeItem("wbookhs", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("wbookhs", 2, UpgradeType.COMPOUND),
         new UpgradeItem("strring", 3, UpgradeType.COMPOUND),
         new UpgradeItem("intring", 3, UpgradeType.COMPOUND),
         new UpgradeItem("dexring", 3, UpgradeType.COMPOUND),

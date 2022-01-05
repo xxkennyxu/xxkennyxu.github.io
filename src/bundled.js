@@ -2218,7 +2218,8 @@ var LoggingSystem = /** @class */ (function (_super) {
         // World Boss Logging
         var wbLogging = "";
         if (this._logWorldBosses) {
-            var trackedWorldBosses_1 = ["grinch"];
+            // const trackedWorldBosses = ["grinch"];
+            var trackedWorldBosses_1 = [];
             whitelistedWorldBosses.forEach(function (wb) { return trackedWorldBosses_1.push(wb); });
             for (var i = 0; i < trackedWorldBosses_1.length; i++) {
                 var wbName = trackedWorldBosses_1[i];

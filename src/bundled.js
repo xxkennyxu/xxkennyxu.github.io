@@ -1978,7 +1978,7 @@ var SoloLocation = /** @class */ (function (_super) {
     }
     SoloLocation.prototype.beforeBusy = function () {
         var _a;
-        if (parent.S.grinch.live) {
+        if (parent.S.grinch && parent.S.grinch.live) {
             if (parent.S.grinch.hp < 1000000) { // try to move to kane when less than 1m hp
                 if (!AlDataClient.alNPCInfo.Kane && canCall("fetchNpcInfo", "alData", 5000)) {
                     AlDataClient.fetchNpcInfo();
@@ -2009,7 +2009,7 @@ var SoloLocation = /** @class */ (function (_super) {
     SoloLocation.prototype.tick = function () {
         // TODO: grinch is special, remove after event is over
         var grinch = getAlWorldBoss("grinch");
-        if (parent.S.grinch.live) {
+        if (parent.S.grinch && parent.S.grinch.live) {
             // no-op, handled in beforeBusy()
         }
         else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
@@ -2020,11 +2020,12 @@ var SoloLocation = /** @class */ (function (_super) {
             if (sinceConvert(getCombatSystem().stateMachine.currentStateSetTime, TimeIn.SECONDS) > 10) {
                 this.forceNextLocation();
             }
-            // } else if(!character.s.holidayspirit) {
-            // 	this.smartMove("town", "xmas-buff").then(() => {
-            // 		parent.socket.emit("interaction",{type:"newyear_tree"});
-            // 	});
-            // 	return;
+        }
+        else if (parent.S.holidayseason && !character.s.holidayspirit) {
+            this.smartMove("town", "xmas-buff").then(function () {
+                parent.socket.emit("interaction", { type: "newyear_tree" });
+            });
+            return;
         }
         else {
             var sinceWb = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.WB);

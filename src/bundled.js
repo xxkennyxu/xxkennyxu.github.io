@@ -2020,12 +2020,11 @@ var SoloLocation = /** @class */ (function (_super) {
             if (sinceConvert(getCombatSystem().stateMachine.currentStateSetTime, TimeIn.SECONDS) > 10) {
                 this.forceNextLocation();
             }
-        }
-        else if (!character.s.holidayspirit) {
-            this.smartMove("town", "xmas-buff").then(function () {
-                parent.socket.emit("interaction", { type: "newyear_tree" });
-            });
-            return;
+            // } else if(!character.s.holidayspirit) {
+            // 	this.smartMove("town", "xmas-buff").then(() => {
+            // 		parent.socket.emit("interaction",{type:"newyear_tree"});
+            // 	});
+            // 	return;
         }
         else {
             var sinceWb = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.WB);
@@ -2632,6 +2631,7 @@ var MerchantConfig = /** @class */ (function () {
         new UpgradeItem("hpamulet", 3, UpgradeType.COMPOUND),
         new UpgradeItem("hpbelt", 3, UpgradeType.COMPOUND),
         new UpgradeItem("wbook0", 3, UpgradeType.COMPOUND),
+        new UpgradeItem("wbookhs", 2, UpgradeType.COMPOUND),
         new UpgradeItem("strring", 3, UpgradeType.COMPOUND),
         new UpgradeItem("intring", 3, UpgradeType.COMPOUND),
         new UpgradeItem("dexring", 3, UpgradeType.COMPOUND),

@@ -1962,7 +1962,8 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-var whitelistedWorldBosses = ["snowman"];
+// export const whitelistedWorldBosses = ["snowman"];
+var whitelistedWorldBosses = [];
 var worldBossSmartMoveLocation = {
     "snowman": SNOWMAN
 };
@@ -2240,11 +2241,14 @@ var LoggingSystem = /** @class */ (function (_super) {
                     worldBoss = parentTts < alTts ? parentWorldBoss : alWorldBoss;
                     timeRemaining = parentTts < alTts ? parentTts : alTts;
                 }
-                if (isLive) {
-                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
-                }
-                else if (timeRemaining) {
-                    wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
+                if (worldBoss) {
+                    if (isLive) {
+                        wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " LIVE!", "green");
+                    }
+                    else if (timeRemaining) {
+                        console.log(worldBoss);
+                        wbLogging += NL + createDivWithColor("[" + worldBoss.serverRegion + "_" + worldBoss.serverIdentifier + "] " + worldBoss.name + " " + msConvert(timeRemaining, TimeIn.SECONDS) + "s", "green");
+                    }
                 }
                 else {
                     wbLogging += NL + createDivWithColor("[???] " + wbName + ": N/A", "red");

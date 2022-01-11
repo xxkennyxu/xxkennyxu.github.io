@@ -3179,11 +3179,11 @@ var Zetchant = /** @class */ (function () {
         this.partySystem = partySystem;
         this.inventorySystem = inventorySystem;
         this.loggingSystem = loggingSystem;
+    }
+    Zetchant.prototype.start = function () {
         this.upgrading = new Upgrading();
         this.cleaning = new Cleaning();
         this.vending = new Vending();
-    }
-    Zetchant.prototype.start = function () {
         // global variables
         parent.locationSystem = new NoOpLocation();
         parent.inventorySystem = this.inventorySystem;

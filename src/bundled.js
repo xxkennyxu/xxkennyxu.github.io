@@ -1619,6 +1619,8 @@ var BEE3 = SmartMoveLocation.create(635, 740, "main", "bee3");
 var POISIO = SmartMoveLocation.create(-170, 1290, "main", "poisio");
 var SQUIGTOAD = SmartMoveLocation.create(-1160, 560, "main", "squigtoad");
 var TORTOISE = SmartMoveLocation.create(-1127, 1080, "main", "tortoise");
+var ICE_ROAMER = SmartMoveLocation.create(823.5, -45.5, "winterland", "iceroamer");
+var ICE_ROAMER2 = SmartMoveLocation.create(1512, 104, "winterland", "iceroamer2");
 
 ;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
 var inventory_extends = (undefined && undefined.__extends) || (function () {
@@ -3288,16 +3290,16 @@ var Zetchant = /** @class */ (function () {
 var characters = {};
 characters["Zett"] = new Character(new ZettWarrior(new WarriorSkills()), new SoloCombat(), new UseMerchant(), 
 // new SoloLocation("bat", "mvampire", 10),
-new SoloLocation(SQUIGTOAD, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(ICE_ROAMER, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zetadin"] = new Character(new ZetadinPaladin(new PaladinSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE1, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetd"] = new Character(new ZetdPriest(new PriestSkills()), 
 // new KiteCombat(),
-new SoloCombat(), new UseMerchant(), new SoloLocation(TORTOISE, 5), 
+new SoloCombat(), new UseMerchant(), new SoloLocation(ICE_ROAMER, 5), 
 // new FollowPartyLocation(),
 new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zettex"] = new Character(new ZettexRogue(new RogueSkills()), new SoloCombat(), new UseMerchant(), 
 // new FollowPartyLocation(),
-new SoloLocation(POISIO, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
+new SoloLocation(ICE_ROAMER, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]));
 characters["Zeter"] = new Character(new ZeterRanger(new RangerSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE2, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetx"] = new Character(new ZetxMage(new MageSkills()), new SoloCombat(), new UseMerchant(), new SoloLocation(BEE3, 5), new LoggingSystem(), new PartySystem().setPartyLeader("Zetadin").setPartyMembers(["Zetadin", "Zetx", "Zeter", "Zetchant"]));
 characters["Zetchant"] = new Zetchant(new PartySystem().setPartyLeader("Zett").setPartyMembers(["Zett", "Zettex", "Zetd", "Zetchant"]), new IsMerchant().setPotQtyThreshold(3000), new LoggingSystem().setLogCombat(false).setLogLocation(false).setLogMoney(true));

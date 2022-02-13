@@ -516,9 +516,9 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-var whitelistedWorldBosses = []; // ["tiger", "dragold", "pinkgoo"];
+var whitelistedWorldBosses = ["dragold"];
 var worldBossSmartMoveLocation = {
-    "snowman": SNOWMAN
+    "snowman": SNOWMAN,
 };
 var SoloLocation = /** @class */ (function (_super) {
     soloLocation_extends(SoloLocation, _super);
@@ -1110,7 +1110,10 @@ var WorldBoss = /** @class */ (function () {
         this.serverIdentifier = serverIdentifier;
     }
     WorldBoss.create = function (alWorldBossData) {
-        return new WorldBoss(alWorldBossData.type, alWorldBossData.x, alWorldBossData.y, null, alWorldBossData.map, alWorldBossData.hp, null, alWorldBossData.target, null, alWorldBossData.serverRegion, alWorldBossData.serverIdentifier);
+        var live = alWorldBossData.estimatedRespawn
+            ? new Date(alWorldBossData.estimatedRespawn).getTime() - new Date().getTime() <= 0
+            : false;
+        return new WorldBoss(alWorldBossData.type, alWorldBossData.x, alWorldBossData.y, live, alWorldBossData.map, alWorldBossData.hp, alWorldBossData.hp, alWorldBossData.target, alWorldBossData.estimatedRespawn, alWorldBossData.serverRegion, alWorldBossData.serverIdentifier);
     };
     return WorldBoss;
 }());
@@ -2008,7 +2011,7 @@ var LoggingSystem = /** @class */ (function (_super) {
         _this._logInventory = true;
         _this._logCombat = true;
         _this._logLocation = true;
-        _this._logWorldBosses = false;
+        _this._logWorldBosses = true;
         _this._itemsShownCount = 0;
         return _this;
     }

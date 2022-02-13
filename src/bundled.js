@@ -2,12 +2,652 @@
 /******/ 	"use strict";
 var __webpack_exports__ = {};
 
-;// CONCATENATED MODULE: ./src/lib/aldata/aldata.ts
+;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
+var SmartMoveLocation = /** @class */ (function () {
+    function SmartMoveLocation(x, y, map, name) {
+        this.x = x;
+        this.y = y;
+        this.map = map;
+        this.name = name;
+    }
+    SmartMoveLocation.create = function (x, y, map, name) {
+        return new SmartMoveLocation(x, y, map, name);
+    };
+    SmartMoveLocation.createName = function (name) {
+        return new SmartMoveLocation(null, null, null, name);
+    };
+    SmartMoveLocation.prototype.get = function () {
+        if (!this.x && !this.y && !this.map)
+            return this.name;
+        return this;
+    };
+    return SmartMoveLocation;
+}());
+
+var SmartLocations = /** @class */ (function () {
+    function SmartLocations() {
+    }
+    SmartLocations.TOWN = SmartMoveLocation.create(0, 0, "main", "town");
+    SmartLocations.OPEN_STAND = SmartMoveLocation.create(130, 0, "main", "open_stand");
+    return SmartLocations;
+}());
+
+var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
+var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
+var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
+var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
+var BEE1 = SmartMoveLocation.create(530, 1070, "main", "bee1");
+var BEE2 = SmartMoveLocation.create(160, 1490, "main", "bee2");
+var BEE3 = SmartMoveLocation.create(635, 740, "main", "bee3");
+var POISIO = SmartMoveLocation.create(-170, 1290, "main", "poisio");
+var SQUIGTOAD = SmartMoveLocation.create(-1160, 560, "main", "squigtoad");
+var TORTOISE = SmartMoveLocation.create(-1127, 1080, "main", "tortoise");
+var ICE_ROAMER = SmartMoveLocation.create(823.5, -45.5, "winterland", "iceroamer");
+var ICE_ROAMER2 = SmartMoveLocation.create(1512, 104, "winterland", "iceroamer2");
+
+;// CONCATENATED MODULE: ./src/lib/state.ts
+
+var PREVIOUS_SYMBOL = createDivWithColor("&#9737;", "yellow", 10);
+var CURRENT_SYMBOL = createDivWithColor("&#9737;", "#A6D422", 10);
+var StateMachine = /** @class */ (function () {
+    function StateMachine(name, stateEnumAccessor, shouldLog) {
+        if (shouldLog === void 0) { shouldLog = false; }
+        this.name = name;
+        this.stateEnumAccessor = stateEnumAccessor;
+        this.shouldLog = shouldLog;
+        this._stateLastSetTime = {};
+        this._currentStateSetTime = new Date();
+    }
+    Object.defineProperty(StateMachine.prototype, "previousState", {
+        get: function () {
+            return this._previousState;
+        },
+        set: function (value) {
+            this._previousState = value;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(StateMachine.prototype, "previousStateSetDurationMs", {
+        get: function () {
+            return this._previousStateSetDurationMs;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(StateMachine.prototype, "currentState", {
+        get: function () {
+            return this._currentState;
+        },
+        set: function (newState) {
+            if (newState === this._currentState)
+                return; // TODO: is this fine? game_log(`State error: setting indetical ${newState}`);
+            this._previousState = this.currentState;
+            this._previousStateSetDurationMs = this._currentStateSetTime ? mssince(this._currentStateSetTime) : 0;
+            this._currentState = newState;
+            this._currentStateSetTime = new Date();
+            this._stateLastSetTime[newState.toString()] = this._currentStateSetTime;
+            if (this.shouldLog)
+                this.logState();
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(StateMachine.prototype, "currentStateSetTime", {
+        get: function () {
+            return this._currentStateSetTime;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    StateMachine.prototype.getStateLastSetTime = function (state, timeIn) {
+        if (timeIn === void 0) { timeIn = TimeIn.SECONDS; }
+        var lastSetTime = this._stateLastSetTime[state.toString()];
+        if (!lastSetTime) {
+            this._stateLastSetTime[state.toString()] = pastDatePlusMins(60);
+        }
+        return sinceConvert(this._stateLastSetTime[state.toString()], timeIn);
+    };
+    Object.defineProperty(StateMachine.prototype, "previousStateDisplay", {
+        get: function () {
+            return createDivWithColor(this.stateEnumAccessor(this._previousState), "yellow");
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(StateMachine.prototype, "currentStateDisplay", {
+        get: function () {
+            return createDivWithColor(this.stateEnumAccessor(this._currentState), "#A6D422");
+        },
+        enumerable: false,
+        configurable: true
+    });
+    StateMachine.prototype.logState = function () {
+        if (this.previousState != null && this.currentState != null) {
+            getLoggingSystem().addLogMessage(PREVIOUS_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.previousState) + "s <br>" + this.previousStateDisplay, "t_previous_state_" + this.name, 60000);
+            getLoggingSystem().addLogMessage(CURRENT_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.currentState) + "s <br>" + this.currentStateDisplay, "t_current_state_" + this.name, 60000);
+        }
+    };
+    return StateMachine;
+}());
+
+
+;// CONCATENATED MODULE: ./src/systems/system.ts
+var System = /** @class */ (function () {
+    function System() {
+    }
+    System.prototype.beforeBusy = function () { };
+    System.prototype.tick = function () { };
+    return System;
+}());
+
+
+;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
+var __extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+var C_IGNORE_MONSTER = ["Target Automatron", "Puppy"];
+var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr.", "Golden Bat"];
+var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
+var CombatDifficulty;
+(function (CombatDifficulty) {
+    CombatDifficulty[CombatDifficulty["EASY"] = 1] = "EASY";
+    CombatDifficulty[CombatDifficulty["MEDIUM"] = 2] = "MEDIUM";
+    CombatDifficulty[CombatDifficulty["HARD"] = 3] = "HARD";
+    CombatDifficulty[CombatDifficulty["DEATH"] = 4] = "DEATH";
+})(CombatDifficulty || (CombatDifficulty = {}));
+var CombatState;
+(function (CombatState) {
+    CombatState[CombatState["WB"] = -99] = "WB";
+    CombatState[CombatState["B"] = -9] = "B";
+    CombatState[CombatState["NO_ENEMY"] = -1] = "NO_ENEMY";
+    CombatState[CombatState["ATK_ME"] = 0] = "ATK_ME";
+    CombatState[CombatState["EASY"] = 1] = "EASY";
+    CombatState[CombatState["FOLLOW"] = 2] = "FOLLOW";
+    CombatState[CombatState["NEAR"] = 99] = "NEAR";
+})(CombatState || (CombatState = {}));
+var CombatSystem = /** @class */ (function (_super) {
+    __extends(CombatSystem, _super);
+    function CombatSystem() {
+        var _this = _super.call(this) || this;
+        _this.stuckThreshold = 10;
+        _this.stuck = 0;
+        _this.preAttackFunc = function () { };
+        _this.postAttackFunc = function () { };
+        _this._stateMachine = new StateMachine(_this.getLogIcon(), function (state) { return CombatState[state]; });
+        return _this;
+    }
+    Object.defineProperty(CombatSystem.prototype, "stateMachine", {
+        get: function () {
+            return this._stateMachine;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    CombatSystem.prototype.getName = function () {
+        return "CombatSystem";
+    };
+    CombatSystem.prototype.getLogIcon = function () {
+        return createDivWithColor("&#128924;", "orange", 10);
+    };
+    CombatSystem.prototype.setPreAttack = function (func) {
+        this.preAttackFunc = func;
+    };
+    CombatSystem.prototype.setPostAttack = function (func) {
+        this.postAttackFunc = func;
+    };
+    CombatSystem.prototype.attack = function (target) {
+        if (!is_in_range(target)) {
+            move(character.x + (target.x - character.x) / 2, character.y + (target.y - character.y) / 2);
+            if (character.real_x === character.from_x && character.real_y === character.from_y)
+                this.stuck++;
+            if (this.stuck > this.stuckThreshold) {
+                utils_getLocationSystem().smartMove({ x: target.x, y: target.y }, "stuck-move");
+                this.stuck = 0;
+            }
+        }
+        else if (can_attack(target)) {
+            this.preAttackFunc(target);
+            if (is_in_range(target, "attack"))
+                attack(target);
+            this.postAttackFunc(target);
+            this.stuck = 0;
+        }
+    };
+    /**
+     * Priority:
+     *  1. Follow the party leaders target
+     *  2. Kill world bosses
+     *  3. Kill monsters targeting me
+     *  3. Find bosses
+     *  4. Find the closest monster [non-boss/non-ignored] (repeat this in case of respawns)
+     */
+    CombatSystem.prototype.getTarget = function () {
+        var target;
+        // Kill NON BOSS monsters targeting me
+        var monsterTargetingMe = this.findNonBossMonsterTargeting();
+        // Pick world boss next
+        var worldBossTarget = this.getWorldBossTarget();
+        // Pick boss monster
+        var bossTarget = this.getBossTarget();
+        // Pick a free target if the difficulty is below MEDIUM combat difficulty
+        var freeBeatableTarget = this.getFreeTarget(CombatDifficulty.MEDIUM);
+        // find the party leader's target
+        var partyLeaderTarget = getPartySystem().getPartyLeaderTarget();
+        // always world boss first, otherwise it'll create edge cases where hostile monsters attack me
+        // and i switch target which will switch servers on me
+        if (worldBossTarget) {
+            target = worldBossTarget;
+            this._stateMachine.currentState = CombatState.WB;
+        }
+        else if (monsterTargetingMe) {
+            target = monsterTargetingMe;
+            this._stateMachine.currentState = CombatState.ATK_ME;
+        }
+        else if (bossTarget) {
+            target = bossTarget;
+            this._stateMachine.currentState = CombatState.B;
+        }
+        else if (freeBeatableTarget) {
+            target = freeBeatableTarget;
+            this._stateMachine.currentState = CombatState.EASY;
+        }
+        else if (partyLeaderTarget) {
+            target = partyLeaderTarget;
+            this._stateMachine.currentState = CombatState.FOLLOW;
+        }
+        else {
+            // 0 - Find nearest monster
+            target = this.getNearestMonster();
+            this._stateMachine.currentState = CombatState.NEAR;
+        }
+        if (!target) {
+            this._stateMachine.currentState = CombatState.NO_ENEMY;
+        }
+        return target;
+    };
+    CombatSystem.prototype.getWorldBossTarget = function () {
+        var _this = this;
+        var entities = getEntities(function (entity) { return _this.isWorldBoss(entity); });
+        return entities.length ? entities[0] : null;
+    };
+    CombatSystem.prototype.getBossTarget = function () {
+        var _this = this;
+        var entities = getEntities(function (entity) { return _this.isBoss(entity); });
+        if (!entities.length)
+            return null;
+        var bossTarget = entities[0];
+        // boss is targeting one of our party members, attack back
+        if (getPartySystem().partyMembers.includes(bossTarget.target))
+            return bossTarget;
+        var combatPartyMemberCount = 0;
+        var combatPartyMemberTargetCount = 0;
+        var combatPartyMembers = getPartySystem().combatPartyMembers;
+        for (var i in combatPartyMembers) {
+            var party_member = combatPartyMembers[i];
+            var player = get_player(party_member);
+            if (player && distance(character, player) < 300) {
+                combatPartyMemberCount++;
+            }
+            if ((player === null || player === void 0 ? void 0 : player.target) === bossTarget.id) {
+                combatPartyMemberTargetCount++;
+            }
+        }
+        if (combatPartyMemberCount != 3 && combatPartyMemberTargetCount != 3) {
+            getPartySystem().assembleCombatMembers();
+            bossTarget = null;
+        }
+        return bossTarget;
+    };
+    CombatSystem.prototype.getFreeTarget = function (combatDifficultyThreshold) {
+        var _this = this;
+        return this.getNearestMonster(function (monster) {
+            var isTargetedByParty = false;
+            // check if target is free; exclude if not
+            getPartySystem().combatPartyMembers.forEach(function (member) {
+                var _a;
+                if (((_a = parent.entities[member]) === null || _a === void 0 ? void 0 : _a.target) === monster.id) {
+                    isTargetedByParty = true;
+                }
+            });
+            var targetTooDifficult = _this.combatDifficulty(monster) > combatDifficultyThreshold;
+            return isTargetedByParty || targetTooDifficult;
+        });
+    };
+    CombatSystem.prototype.calculateDamage = function (attacker, defender) {
+        return attacker.attack * (1 - (defender.armor / 100) * .1); // every 100 armor is about 10% +/- diminishing
+    };
+    CombatSystem.prototype.combatDifficulty = function (monster) {
+        // Calculate number of attacks per second and find out how many attacks a monster can do in the time
+        // my character can
+        var numMonsterAttackInPlayerAttacks = function (numAttacks) {
+            var mAtkPerSecond = 1 / monster.frequency;
+            var cAtkPerSecond = 1 / character.frequency;
+            return Math.floor((numAttacks * cAtkPerSecond) / mAtkPerSecond);
+        };
+        // TODO: range, incorporate evasion, incorporate pierce // rpiercing // apiercing
+        // reflection
+        // life steal
+        // Attack count TO KILL calculation
+        var acutalCharDmg = this.calculateDamage(character, monster);
+        var numAttacksToKillMonster = Math.ceil(monster.hp / acutalCharDmg);
+        var damageSuffered = numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) * this.calculateDamage(monster, character);
+        var percentHpRemaining = (character.max_hp - damageSuffered) / character.max_hp;
+        if (percentHpRemaining > .8) {
+            return CombatDifficulty.EASY;
+        }
+        // Medium: Can kill monsters within 10 attacks && lose up to 50% HP
+        else if (percentHpRemaining > .5) {
+            return CombatDifficulty.MEDIUM;
+        }
+        else if (percentHpRemaining > .2) {
+            debugLog("HARD: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ".\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
+            return CombatDifficulty.HARD;
+        }
+        return CombatDifficulty.DEATH;
+    };
+    CombatSystem.prototype.getTargetedMonster = function () {
+        if (parent.ctarget && !parent.ctarget.dead && parent.ctarget.type === "monster")
+            return parent.ctarget;
+        return null;
+    };
+    CombatSystem.prototype.getNearestMonster = function (excludeCondition) {
+        if (excludeCondition === void 0) { excludeCondition = function () { return false; }; }
+        var target = null;
+        var minDistance = 999999;
+        for (var id in parent.entities) {
+            var current = parent.entities[id];
+            // if(current.type != "monster" || !current.visible || current.dead) continue;
+            if (current.type != "monster" || current.dead)
+                continue;
+            if (!can_move_to(current))
+                continue;
+            if (this.isBoss(current))
+                continue;
+            if (this.isIgnoredMonster(current))
+                continue;
+            if (excludeCondition(current))
+                continue;
+            var currentDistance = distance(character, current);
+            if (currentDistance < minDistance) {
+                minDistance = currentDistance;
+                target = current;
+            }
+        }
+        return target;
+    };
+    CombatSystem.prototype.findNonBossMonsterTargeting = function (target) {
+        var _this = this;
+        if (target === void 0) { target = character; }
+        var entities = getEntities(function (current) {
+            return current.type === "monster" && !_this.isBoss(current) && current.target === target.name && distance(character, current) < character.range;
+        });
+        return entities.length ? entities[0] : null;
+    };
+    CombatSystem.prototype.isIgnoredMonster = function (target) {
+        return C_IGNORE_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
+    };
+    CombatSystem.prototype.isBoss = function (target) {
+        return C_BOSS_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
+    };
+    CombatSystem.prototype.isWorldBoss = function (target) {
+        return C_WORLD_BOSS_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
+    };
+    CombatSystem.prototype.findTarget = function () {
+        var target = this.getTarget();
+        if (!target) {
+            return null;
+        }
+        this.currentTarget = target;
+        return target;
+    };
+    return CombatSystem;
+}(System));
+
+var NoOpCombat = /** @class */ (function (_super) {
+    __extends(NoOpCombat, _super);
+    function NoOpCombat() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    NoOpCombat.prototype.tick = function () {
+        return;
+    };
+    return NoOpCombat;
+}(CombatSystem));
+
+
+;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
+var locationSystem_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+var LocationState;
+(function (LocationState) {
+})(LocationState || (LocationState = {}));
+var LocationSystem = /** @class */ (function (_super) {
+    locationSystem_extends(LocationSystem, _super);
+    function LocationSystem() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    LocationSystem.prototype.getName = function () {
+        return "LocationSystem";
+    };
+    LocationSystem.prototype.getLogIcon = function () {
+        return createDivWithColor("&#128099;", "purple", 10);
+    };
+    LocationSystem.prototype.smartMove = function (dest, destinationName) {
+        if (isStandOpen())
+            close_stand();
+        this.destination = dest;
+        this.destinationName = destinationName;
+        this.lastDestinationChangeAt = new Date();
+        this.setLocation(destinationName);
+        return smart_move(dest);
+    };
+    LocationSystem.prototype.getSmartMoveLocation = function (smartMoveLoc) {
+        return smartMoveLoc ? smartMoveLoc : {
+            map: character.map,
+            x: character.real_x - 5,
+            y: character.real_y + 5,
+            smart: smart
+        };
+    };
+    LocationSystem.prototype.setLocation = function (location) {
+        parent.currentLocation = location;
+    };
+    return LocationSystem;
+}(System));
+
+var NoOpLocation = /** @class */ (function (_super) {
+    locationSystem_extends(NoOpLocation, _super);
+    function NoOpLocation() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return NoOpLocation;
+}(LocationSystem));
+
+
+;// CONCATENATED MODULE: ./src/systems/location/soloLocation.ts
+var soloLocation_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+
+
+
+
+
+var whitelistedWorldBosses = []; // ["tiger", "dragold", "pinkgoo"];
+var worldBossSmartMoveLocation = {
+    "snowman": SNOWMAN
+};
+var SoloLocation = /** @class */ (function (_super) {
+    soloLocation_extends(SoloLocation, _super);
+    function SoloLocation(mobDestination, locationChangeIntervalMin) {
+        var _this = _super.call(this) || this;
+        _this.mobDestination = mobDestination;
+        _this.locationChangeIntervalMin = locationChangeIntervalMin;
+        _this.lastDestinationChangeAt = pastDatePlusMins(locationChangeIntervalMin + 1);
+        parent.currentLocation = "?";
+        return _this;
+    }
+    SoloLocation.prototype.beforeBusy = function () {
+        var _a;
+        if (parent.S.grinch && parent.S.grinch.live) {
+            if (parent.S.grinch.hp < 1000000) { // try to move to kane when less than 1m hp
+                if (!AlDataClient.data.Kane && canCall("fetchNpcInfo", "alData", 5000)) {
+                    AlDataClient.fetchData();
+                }
+                if (((_a = AlDataClient.data.Kane) === null || _a === void 0 ? void 0 : _a.length) > 0) {
+                    for (var i = 0; i < AlDataClient.data.Kane.length; i++) {
+                        var kane = AlDataClient.data.Kane[i];
+                        if (kane.serverRegion === server.region && kane.serverIdentifier === server.id && sinceConvert(new Date(kane.lastSeen), TimeIn.MINUTES) < 5) {
+                            utils_getLocationSystem().smartMove(kane, "kane");
+                            return;
+                        }
+                    }
+                }
+            }
+            if (!this.previousGrinchLocation) {
+                this.previousGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
+            }
+            if (secSince(this.lastDestinationChangeAt) > 10 && getCombatSystem().stateMachine.currentState != CombatState.WB) {
+                var currentGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
+                if (!smart.moving || !isWithinSquare(this.previousGrinchLocation, currentGrinchLocation, 200)) {
+                    this.smartMove(parent.S["grinch"], "grinch");
+                    this.lastDestinationChangeAt = new Date();
+                }
+                this.previousGrinchLocation = currentGrinchLocation;
+            }
+        }
+    };
+    SoloLocation.prototype.tick = function () {
+        // TODO: grinch is special, remove after event is over
+        var grinch = getAlWorldBoss("grinch");
+        if (parent.S.grinch && parent.S.grinch.live) {
+            // no-op, handled in beforeBusy()
+        }
+        else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
+            changeServer(grinch.serverRegion, grinch.serverIdentifier);
+        }
+        // Engaged in boss/worldboss, do not move
+        else if (getCombatSystem().stateMachine.currentState === CombatState.WB || getCombatSystem().stateMachine.currentState === CombatState.B) {
+            if (sinceConvert(getCombatSystem().stateMachine.currentStateSetTime, TimeIn.SECONDS) > 10) {
+                this.forceNextLocation();
+            }
+        }
+        else if (parent.S.holidayseason && !character.s.holidayspirit) {
+            this.smartMove("town", "xmas-buff").then(function () {
+                parent.socket.emit("interaction", { type: "newyear_tree" });
+            });
+            return;
+        }
+        else {
+            var sinceWb = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.WB);
+            var sinceB = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.B);
+            if (sinceWb > 30 && sinceB > 30) {
+                this.moveToNextLocation();
+            }
+            else {
+                debugLog("sinceWb: " + sinceWb + " | sinceB: " + sinceB, "location_debug!");
+            }
+        }
+    };
+    SoloLocation.prototype.forceNextLocation = function () {
+        this.lastDestinationChangeAt = pastDatePlusMins(this.locationChangeIntervalMin + 1);
+    };
+    SoloLocation.prototype.moveToNextLocation = function () {
+        var nextLocation;
+        var bossSpawningSoon = false;
+        // always goes to bosses in order
+        for (var boss in whitelistedWorldBosses) {
+            var worldBossName = whitelistedWorldBosses[boss];
+            var worldBoss = isWorldBossReady(worldBossName);
+            if (!worldBossSmartMoveLocation[worldBossName])
+                debugLog("No SmartLocation found for " + worldBossName);
+            if (worldBoss) {
+                if (worldBoss.serverIdentifier != server.id || worldBoss.serverRegion != server.region) {
+                    changeServer(worldBoss.serverRegion, worldBoss.serverIdentifier);
+                    return;
+                }
+                nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
+                this.nextLocationName = worldBossName;
+                this.forceNextLocation();
+                bossSpawningSoon = true;
+            }
+        }
+        // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
+        if (!bossSpawningSoon && ("PVP" != server.id || "EU" != server.region)) {
+            changeServer("EU", "PVP");
+        }
+        if (!nextLocation) {
+            if (typeof this.mobDestination === "string") {
+                nextLocation = this.nextLocationName = this.mobDestination;
+            }
+            else {
+                nextLocation = this.mobDestination.get();
+                this.nextLocationName = this.mobDestination.name;
+            }
+        }
+        if (this.nextLocationName === parent.currentLocation) {
+            return;
+        }
+        if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
+            this.smartMove(nextLocation, this.nextLocationName);
+            this.lastDestinationChangeAt = new Date();
+        }
+    };
+    return SoloLocation;
+}(LocationSystem));
+
+
+;// CONCATENATED MODULE: ./src/lib/aldata/earthiverseData.ts
 
 var AlDataClient = /** @class */ (function () {
     function AlDataClient() {
     }
-    AlDataClient.fetchNpcInfo = function () {
+    AlDataClient.fetchData = function () {
+        if (whitelistedWorldBosses.length === 0)
+            return;
         //create XMLHttpRequest object
         var xhr = new XMLHttpRequest();
         //triggered when the response is completed
@@ -15,13 +655,11 @@ var AlDataClient = /** @class */ (function () {
             if (xhr.status === 200) {
                 //parse JSON datax`x
                 var data = JSON.parse(xhr.responseText);
-                var eventNames_1 = [];
                 data.forEach(function (alNpcInfoData) {
-                    if (!AlDataClient.alNPCInfo[alNpcInfoData.name]) {
-                        AlDataClient.alNPCInfo[alNpcInfoData.name] = [];
-                        eventNames_1.push(alNpcInfoData.name);
+                    if (!AlDataClient.data[alNpcInfoData.type]) {
+                        AlDataClient.data[alNpcInfoData.type] = [];
                     }
-                    AlDataClient.alNPCInfo[alNpcInfoData.name].push(alNpcInfoData);
+                    AlDataClient.data[alNpcInfoData.type].push(alNpcInfoData);
                 });
             }
             else if (xhr.status === 404) {
@@ -29,127 +667,11 @@ var AlDataClient = /** @class */ (function () {
             }
         };
         //open a get request with the remote server URL
-        xhr.open("GET", "https://aldata.info/api/NPCInfo");
+        xhr.open("GET", "https://aldata.earthiverse.ca/monsters/" + whitelistedWorldBosses.join(","));
         //send the Http request
         xhr.send();
     };
-    AlDataClient.fetchWorldBosses = function () {
-        var cachedData = get("alData");
-        if (cachedData && cachedData.time && cachedData.data) {
-            // if data is less than 45 minutes old, re-use
-            var timePassedInMinutes = sinceConvert(new Date(cachedData.time), TimeIn.MINUTES);
-            if (timePassedInMinutes < 45) {
-                AlDataClient.alWbData = cachedData.data;
-                if (character.name === "Zett") {
-                    debugLog("Loading cached data " + timePassedInMinutes + "mins...", "cacheAlData", 60000);
-                }
-                return;
-            }
-            else {
-                AlDataClient.alWbData = {};
-            }
-        }
-        //create XMLHttpRequest object
-        var xhr = new XMLHttpRequest();
-        //triggered when the response is completed
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                //parse JSON datax`x
-                var data = JSON.parse(xhr.responseText);
-                var eventNames_2 = [];
-                data.forEach(function (alResponseData) {
-                    if (!AlDataClient.alWbData[alResponseData.eventname]) {
-                        AlDataClient.alWbData[alResponseData.eventname] = [];
-                        eventNames_2.push(alResponseData.eventname);
-                    }
-                    AlDataClient.alWbData[alResponseData.eventname].push(alResponseData);
-                    // let serverKey: Server;
-                    // if (alResponseData.server_identifier === "US") {
-                    // 	switch (alResponseData.server_region) {
-                    // 		case "I": serverKey = Server.US_1; break;
-                    // 		case "II": serverKey = Server.US_2; break;
-                    // 		case "III": serverKey = Server.US_3; break;
-                    // 		case "PVP": serverKey = Server.US_PVP; break;
-                    // 	}
-                    // } else if (alResponseData.server_identifier === "EU") {
-                    // 	switch (alResponseData.server_region) {
-                    // 		case "I": serverKey = Server.EU_1; break;
-                    // 		case "II": serverKey = Server.EU_2; break;
-                    // 		case "PVP": serverKey = Server.EU_PVP; break;
-                    // 	}
-                    // } else if (alResponseData.server_identifier === "ASIA") {
-                    // 	switch (alResponseData.server_region) {
-                    // 		case "I": serverKey = Server.ASIA_1; break;
-                    // 	}
-                    // }
-                    // if (!serverKey) {
-                    // 	console.error(`don't recognize ${alResponseData.server_identifier}_${alResponseData.server_region}`);
-                    // } else {
-                    // 	AlDataClient.alData[serverKey].push(alResponseData);
-                    // }
-                });
-                eventNames_2.forEach(function (name) { return AlDataClient.alWbData[name].sort(function (a, b) {
-                    if (a.live && b.live)
-                        return 0;
-                    if (a.live && !b.live)
-                        return -1;
-                    if (!a.live && b.live)
-                        return 1;
-                    var aDate = new Date(a.spawn);
-                    var bDate = new Date(b.spawn);
-                    return aDate.getTime() - bDate.getTime();
-                }); });
-                // CACHING
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                var alCache = {};
-                alCache["data"] = AlDataClient.alWbData;
-                alCache["time"] = new Date();
-                set("alData", alCache);
-            }
-            else if (xhr.status === 404) {
-                console.log("No records found");
-            }
-        };
-        //open a get request with the remote server URL
-        xhr.open("GET", "https://aldata.info/api/ServerStatus");
-        //send the Http request
-        xhr.send();
-    };
-    AlDataClient.shiftExpired = function () {
-        for (var _i = 0, _a = Object.entries(AlDataClient.alWbData); _i < _a.length; _i++) {
-            var _b = _a[_i], key = _b[0], alDataList = _b[1];
-            if (alDataList.length) {
-                var parentBoss = getParentWorldBoss(key);
-                var boss = WorldBoss.create(alDataList[0]);
-                if (key === "snowman") {
-                    console.log(parentBoss);
-                    console.log(boss);
-                    console.log(timeTillWorldBoss(boss));
-                    console.log((parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverIdentifier) === boss.serverIdentifier && (parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverRegion) === boss.serverRegion);
-                    console.log(!(parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.live));
-                    console.log("\n\n\n");
-                }
-                if ((timeTillWorldBoss(boss) < 0 || boss.live) // when we fetch AlData it could be that boss was alive
-                    && (parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverIdentifier) === boss.serverIdentifier && (parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.serverRegion) === boss.serverRegion
-                    && !(parentBoss === null || parentBoss === void 0 ? void 0 : parentBoss.live)) {
-                    console.log(parentBoss);
-                    game_log(">>PRUNING [" + boss.serverRegion + "_" + boss.serverIdentifier + "] " + boss.name);
-                    alDataList.shift();
-                    this.updateCache();
-                }
-            }
-        }
-    };
-    AlDataClient.updateCache = function () {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        var alCache = {};
-        alCache["time"] = get("alData").time;
-        alCache["data"] = AlDataClient.alWbData;
-        set("alData", alCache);
-        game_log("updated cache!");
-    };
-    AlDataClient.alWbData = {};
-    AlDataClient.alNPCInfo = {};
+    AlDataClient.data = {};
     return AlDataClient;
 }());
 
@@ -231,8 +753,8 @@ function getParentWorldBoss(bossName) {
     return worldBosses[bossName];
 }
 function getAlWorldBoss(bossName) {
-    if (AlDataClient.alWbData[bossName] && AlDataClient.alWbData[bossName].length) {
-        var alWorldBossData = AlDataClient.alWbData[bossName][0];
+    if (AlDataClient.data[bossName] && AlDataClient.data[bossName].length) {
+        var alWorldBossData = AlDataClient.data[bossName][0];
         // AlDataClient.alData[bossName].forEach(adata => console.log(`${adata.eventname} (${adata.live}) ${adata.spawn}`));
         return WorldBoss.create(alWorldBossData);
     }
@@ -588,7 +1110,7 @@ var WorldBoss = /** @class */ (function () {
         this.serverIdentifier = serverIdentifier;
     }
     WorldBoss.create = function (alWorldBossData) {
-        return new WorldBoss(alWorldBossData.eventname, alWorldBossData.x, alWorldBossData.y, alWorldBossData.live, alWorldBossData.map, alWorldBossData.hp, alWorldBossData.max_hp, alWorldBossData.target, alWorldBossData.spawn, alWorldBossData.server_region, alWorldBossData.server_identifier);
+        return new WorldBoss(alWorldBossData.type, alWorldBossData.x, alWorldBossData.y, null, alWorldBossData.map, alWorldBossData.hp, null, alWorldBossData.target, null, alWorldBossData.serverRegion, alWorldBossData.serverIdentifier);
     };
     return WorldBoss;
 }());
@@ -622,7 +1144,7 @@ var CharacterFunction = /** @class */ (function () {
         addGlobalFunctions();
         modifyUi();
         parent.loginDate = new Date(); // prevent spam change_server
-        setInterval(function () { return AlDataClient.fetchWorldBosses(); }, 5000);
+        setInterval(function () { return AlDataClient.fetchData(); }, 30000);
     };
     CharacterFunction.prototype.hpPotUse = function () {
         if (is_on_cooldown("use_hp") || safeties && mssince(this.lastHpPotionUsedAt) < min(200, character.ping * 3))
@@ -708,7 +1230,7 @@ var Character = /** @class */ (function () {
 
 
 ;// CONCATENATED MODULE: ./src/lib/skills.ts
-var __extends = (undefined && undefined.__extends) || (function () {
+var skills_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -808,7 +1330,7 @@ var Skills = /** @class */ (function () {
 }());
 
 var WarriorSkills = /** @class */ (function (_super) {
-    __extends(WarriorSkills, _super);
+    skills_extends(WarriorSkills, _super);
     function WarriorSkills() {
         var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.agitate = new Skill({ name: "agitate", mpCost: 420, charReq: { level: 68 }, cooldown: 2.2, range: 320 });
@@ -825,7 +1347,7 @@ var WarriorSkills = /** @class */ (function (_super) {
 }(Skills));
 
 var RogueSkills = /** @class */ (function (_super) {
-    __extends(RogueSkills, _super);
+    skills_extends(RogueSkills, _super);
     function RogueSkills() {
         var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.invis = new Skill({ name: "invis", cooldown: 12 });
@@ -841,7 +1363,7 @@ var RogueSkills = /** @class */ (function (_super) {
 }(Skills));
 
 var PriestSkills = /** @class */ (function (_super) {
-    __extends(PriestSkills, _super);
+    skills_extends(PriestSkills, _super);
     function PriestSkills() {
         var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.absorb = new Skill({ name: "absorb", mpCost: 200, cooldown: .4, range: 240, charReq: { level: 55 } });
@@ -856,7 +1378,7 @@ var PriestSkills = /** @class */ (function (_super) {
 }(Skills));
 
 var MerchantSkills = /** @class */ (function (_super) {
-    __extends(MerchantSkills, _super);
+    skills_extends(MerchantSkills, _super);
     function MerchantSkills() {
         var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.fishing = new Skill({ name: "fishing", mpCost: 120, charReq: { level: 16 }, cooldown: 2880, range: 15 });
@@ -872,7 +1394,7 @@ var MerchantSkills = /** @class */ (function (_super) {
 }(Skills));
 
 var PaladinSkills = /** @class */ (function (_super) {
-    __extends(PaladinSkills, _super);
+    skills_extends(PaladinSkills, _super);
     function PaladinSkills() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -880,7 +1402,7 @@ var PaladinSkills = /** @class */ (function (_super) {
 }(Skills));
 
 var RangerSkills = /** @class */ (function (_super) {
-    __extends(RangerSkills, _super);
+    skills_extends(RangerSkills, _super);
     function RangerSkills() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -888,7 +1410,7 @@ var RangerSkills = /** @class */ (function (_super) {
 }(Skills));
 
 var MageSkills = /** @class */ (function (_super) {
-    __extends(MageSkills, _super);
+    skills_extends(MageSkills, _super);
     function MageSkills() {
         var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.alchemy = new Skill({ name: "alchemy", mpCost: 347, cooldown: 8, charReq: { level: 40 } });
@@ -1193,435 +1715,6 @@ function handleBuffRequest(name, data) {
     });
 }
 
-;// CONCATENATED MODULE: ./src/lib/state.ts
-
-var PREVIOUS_SYMBOL = createDivWithColor("&#9737;", "yellow", 10);
-var CURRENT_SYMBOL = createDivWithColor("&#9737;", "#A6D422", 10);
-var StateMachine = /** @class */ (function () {
-    function StateMachine(name, stateEnumAccessor, shouldLog) {
-        if (shouldLog === void 0) { shouldLog = false; }
-        this.name = name;
-        this.stateEnumAccessor = stateEnumAccessor;
-        this.shouldLog = shouldLog;
-        this._stateLastSetTime = {};
-        this._currentStateSetTime = new Date();
-    }
-    Object.defineProperty(StateMachine.prototype, "previousState", {
-        get: function () {
-            return this._previousState;
-        },
-        set: function (value) {
-            this._previousState = value;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(StateMachine.prototype, "previousStateSetDurationMs", {
-        get: function () {
-            return this._previousStateSetDurationMs;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(StateMachine.prototype, "currentState", {
-        get: function () {
-            return this._currentState;
-        },
-        set: function (newState) {
-            if (newState === this._currentState)
-                return; // TODO: is this fine? game_log(`State error: setting indetical ${newState}`);
-            this._previousState = this.currentState;
-            this._previousStateSetDurationMs = this._currentStateSetTime ? mssince(this._currentStateSetTime) : 0;
-            this._currentState = newState;
-            this._currentStateSetTime = new Date();
-            this._stateLastSetTime[newState.toString()] = this._currentStateSetTime;
-            if (this.shouldLog)
-                this.logState();
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(StateMachine.prototype, "currentStateSetTime", {
-        get: function () {
-            return this._currentStateSetTime;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    StateMachine.prototype.getStateLastSetTime = function (state, timeIn) {
-        if (timeIn === void 0) { timeIn = TimeIn.SECONDS; }
-        var lastSetTime = this._stateLastSetTime[state.toString()];
-        if (!lastSetTime) {
-            this._stateLastSetTime[state.toString()] = pastDatePlusMins(60);
-        }
-        return sinceConvert(this._stateLastSetTime[state.toString()], timeIn);
-    };
-    Object.defineProperty(StateMachine.prototype, "previousStateDisplay", {
-        get: function () {
-            return createDivWithColor(this.stateEnumAccessor(this._previousState), "yellow");
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(StateMachine.prototype, "currentStateDisplay", {
-        get: function () {
-            return createDivWithColor(this.stateEnumAccessor(this._currentState), "#A6D422");
-        },
-        enumerable: false,
-        configurable: true
-    });
-    StateMachine.prototype.logState = function () {
-        if (this.previousState != null && this.currentState != null) {
-            getLoggingSystem().addLogMessage(PREVIOUS_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.previousState) + "s <br>" + this.previousStateDisplay, "t_previous_state_" + this.name, 60000);
-            getLoggingSystem().addLogMessage(CURRENT_SYMBOL + " " + this.name + " " + this.getStateLastSetTime(this.currentState) + "s <br>" + this.currentStateDisplay, "t_current_state_" + this.name, 60000);
-        }
-    };
-    return StateMachine;
-}());
-
-
-;// CONCATENATED MODULE: ./src/systems/system.ts
-var System = /** @class */ (function () {
-    function System() {
-    }
-    System.prototype.beforeBusy = function () { };
-    System.prototype.tick = function () { };
-    return System;
-}());
-
-
-;// CONCATENATED MODULE: ./src/systems/combat/combatSystem.ts
-var combatSystem_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-var C_IGNORE_MONSTER = ["Target Automatron", "Puppy"];
-var C_BOSS_MONSTER = ["Dracul", "Phoenix", "Green Jr.", "Golden Bat"];
-var C_WORLD_BOSS_MONSTER = ["Grinch", "Snowman", "Franky"];
-var CombatDifficulty;
-(function (CombatDifficulty) {
-    CombatDifficulty[CombatDifficulty["EASY"] = 1] = "EASY";
-    CombatDifficulty[CombatDifficulty["MEDIUM"] = 2] = "MEDIUM";
-    CombatDifficulty[CombatDifficulty["HARD"] = 3] = "HARD";
-    CombatDifficulty[CombatDifficulty["DEATH"] = 4] = "DEATH";
-})(CombatDifficulty || (CombatDifficulty = {}));
-var CombatState;
-(function (CombatState) {
-    CombatState[CombatState["WB"] = -99] = "WB";
-    CombatState[CombatState["B"] = -9] = "B";
-    CombatState[CombatState["NO_ENEMY"] = -1] = "NO_ENEMY";
-    CombatState[CombatState["ATK_ME"] = 0] = "ATK_ME";
-    CombatState[CombatState["EASY"] = 1] = "EASY";
-    CombatState[CombatState["FOLLOW"] = 2] = "FOLLOW";
-    CombatState[CombatState["NEAR"] = 99] = "NEAR";
-})(CombatState || (CombatState = {}));
-var CombatSystem = /** @class */ (function (_super) {
-    combatSystem_extends(CombatSystem, _super);
-    function CombatSystem() {
-        var _this = _super.call(this) || this;
-        _this.stuckThreshold = 10;
-        _this.stuck = 0;
-        _this.preAttackFunc = function () { };
-        _this.postAttackFunc = function () { };
-        _this._stateMachine = new StateMachine(_this.getLogIcon(), function (state) { return CombatState[state]; });
-        return _this;
-    }
-    Object.defineProperty(CombatSystem.prototype, "stateMachine", {
-        get: function () {
-            return this._stateMachine;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    CombatSystem.prototype.getName = function () {
-        return "CombatSystem";
-    };
-    CombatSystem.prototype.getLogIcon = function () {
-        return createDivWithColor("&#128924;", "orange", 10);
-    };
-    CombatSystem.prototype.setPreAttack = function (func) {
-        this.preAttackFunc = func;
-    };
-    CombatSystem.prototype.setPostAttack = function (func) {
-        this.postAttackFunc = func;
-    };
-    CombatSystem.prototype.attack = function (target) {
-        if (!is_in_range(target)) {
-            move(character.x + (target.x - character.x) / 2, character.y + (target.y - character.y) / 2);
-            if (character.real_x === character.from_x && character.real_y === character.from_y)
-                this.stuck++;
-            if (this.stuck > this.stuckThreshold) {
-                utils_getLocationSystem().smartMove({ x: target.x, y: target.y }, "stuck-move");
-                this.stuck = 0;
-            }
-        }
-        else if (can_attack(target)) {
-            this.preAttackFunc(target);
-            if (is_in_range(target, "attack"))
-                attack(target);
-            this.postAttackFunc(target);
-            this.stuck = 0;
-        }
-    };
-    /**
-     * Priority:
-     *  1. Follow the party leaders target
-     *  2. Kill world bosses
-     *  3. Kill monsters targeting me
-     *  3. Find bosses
-     *  4. Find the closest monster [non-boss/non-ignored] (repeat this in case of respawns)
-     */
-    CombatSystem.prototype.getTarget = function () {
-        var target;
-        // Kill NON BOSS monsters targeting me
-        var monsterTargetingMe = this.findNonBossMonsterTargeting();
-        // Pick world boss next
-        var worldBossTarget = this.getWorldBossTarget();
-        // Pick boss monster
-        var bossTarget = this.getBossTarget();
-        // Pick a free target if the difficulty is below MEDIUM combat difficulty
-        var freeBeatableTarget = this.getFreeTarget(CombatDifficulty.MEDIUM);
-        // find the party leader's target
-        var partyLeaderTarget = getPartySystem().getPartyLeaderTarget();
-        // always world boss first, otherwise it'll create edge cases where hostile monsters attack me
-        // and i switch target which will switch servers on me
-        if (worldBossTarget) {
-            target = worldBossTarget;
-            this._stateMachine.currentState = CombatState.WB;
-        }
-        else if (monsterTargetingMe) {
-            target = monsterTargetingMe;
-            this._stateMachine.currentState = CombatState.ATK_ME;
-        }
-        else if (bossTarget) {
-            target = bossTarget;
-            this._stateMachine.currentState = CombatState.B;
-        }
-        else if (freeBeatableTarget) {
-            target = freeBeatableTarget;
-            this._stateMachine.currentState = CombatState.EASY;
-        }
-        else if (partyLeaderTarget) {
-            target = partyLeaderTarget;
-            this._stateMachine.currentState = CombatState.FOLLOW;
-        }
-        else {
-            // 0 - Find nearest monster
-            target = this.getNearestMonster();
-            this._stateMachine.currentState = CombatState.NEAR;
-        }
-        if (!target) {
-            this._stateMachine.currentState = CombatState.NO_ENEMY;
-        }
-        return target;
-    };
-    CombatSystem.prototype.getWorldBossTarget = function () {
-        var _this = this;
-        var entities = getEntities(function (entity) { return _this.isWorldBoss(entity); });
-        return entities.length ? entities[0] : null;
-    };
-    CombatSystem.prototype.getBossTarget = function () {
-        var _this = this;
-        var entities = getEntities(function (entity) { return _this.isBoss(entity); });
-        if (!entities.length)
-            return null;
-        var bossTarget = entities[0];
-        // boss is targeting one of our party members, attack back
-        if (getPartySystem().partyMembers.includes(bossTarget.target))
-            return bossTarget;
-        var combatPartyMemberCount = 0;
-        var combatPartyMemberTargetCount = 0;
-        var combatPartyMembers = getPartySystem().combatPartyMembers;
-        for (var i in combatPartyMembers) {
-            var party_member = combatPartyMembers[i];
-            var player = get_player(party_member);
-            if (player && distance(character, player) < 300) {
-                combatPartyMemberCount++;
-            }
-            if ((player === null || player === void 0 ? void 0 : player.target) === bossTarget.id) {
-                combatPartyMemberTargetCount++;
-            }
-        }
-        if (combatPartyMemberCount != 3 && combatPartyMemberTargetCount != 3) {
-            getPartySystem().assembleCombatMembers();
-            bossTarget = null;
-        }
-        return bossTarget;
-    };
-    CombatSystem.prototype.getFreeTarget = function (combatDifficultyThreshold) {
-        var _this = this;
-        return this.getNearestMonster(function (monster) {
-            var isTargetedByParty = false;
-            // check if target is free; exclude if not
-            getPartySystem().combatPartyMembers.forEach(function (member) {
-                var _a;
-                if (((_a = parent.entities[member]) === null || _a === void 0 ? void 0 : _a.target) === monster.id) {
-                    isTargetedByParty = true;
-                }
-            });
-            var targetTooDifficult = _this.combatDifficulty(monster) > combatDifficultyThreshold;
-            return isTargetedByParty || targetTooDifficult;
-        });
-    };
-    CombatSystem.prototype.calculateDamage = function (attacker, defender) {
-        return attacker.attack * (1 - (defender.armor / 100) * .1); // every 100 armor is about 10% +/- diminishing
-    };
-    CombatSystem.prototype.combatDifficulty = function (monster) {
-        // Calculate number of attacks per second and find out how many attacks a monster can do in the time
-        // my character can
-        var numMonsterAttackInPlayerAttacks = function (numAttacks) {
-            var mAtkPerSecond = 1 / monster.frequency;
-            var cAtkPerSecond = 1 / character.frequency;
-            return Math.floor((numAttacks * cAtkPerSecond) / mAtkPerSecond);
-        };
-        // TODO: range, incorporate evasion, incorporate pierce // rpiercing // apiercing
-        // reflection
-        // life steal
-        // Attack count TO KILL calculation
-        var acutalCharDmg = this.calculateDamage(character, monster);
-        var numAttacksToKillMonster = Math.ceil(monster.hp / acutalCharDmg);
-        var damageSuffered = numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) * this.calculateDamage(monster, character);
-        var percentHpRemaining = (character.max_hp - damageSuffered) / character.max_hp;
-        if (percentHpRemaining > .8) {
-            return CombatDifficulty.EASY;
-        }
-        // Medium: Can kill monsters within 10 attacks && lose up to 50% HP
-        else if (percentHpRemaining > .5) {
-            return CombatDifficulty.MEDIUM;
-        }
-        else if (percentHpRemaining > .2) {
-            debugLog("HARD: " + monster.name + " (HP:" + monster.max_hp + "/ATK:" + monster.attack + ".\n\t\t\t\n-> numAtks: " + numAttacksToKillMonster + " | numAtksMonster: " + numMonsterAttackInPlayerAttacks(numAttacksToKillMonster) + "\n\t\t\t\n---> -" + damageSuffered + "HP (" + percentHpRemaining + ")\n\n", "diffculty", 10000);
-            return CombatDifficulty.HARD;
-        }
-        return CombatDifficulty.DEATH;
-    };
-    CombatSystem.prototype.getTargetedMonster = function () {
-        if (parent.ctarget && !parent.ctarget.dead && parent.ctarget.type === "monster")
-            return parent.ctarget;
-        return null;
-    };
-    CombatSystem.prototype.getNearestMonster = function (excludeCondition) {
-        if (excludeCondition === void 0) { excludeCondition = function () { return false; }; }
-        var target = null;
-        var minDistance = 999999;
-        for (var id in parent.entities) {
-            var current = parent.entities[id];
-            // if(current.type != "monster" || !current.visible || current.dead) continue;
-            if (current.type != "monster" || current.dead)
-                continue;
-            if (!can_move_to(current))
-                continue;
-            if (this.isBoss(current))
-                continue;
-            if (this.isIgnoredMonster(current))
-                continue;
-            if (excludeCondition(current))
-                continue;
-            var currentDistance = distance(character, current);
-            if (currentDistance < minDistance) {
-                minDistance = currentDistance;
-                target = current;
-            }
-        }
-        return target;
-    };
-    CombatSystem.prototype.findNonBossMonsterTargeting = function (target) {
-        var _this = this;
-        if (target === void 0) { target = character; }
-        var entities = getEntities(function (current) {
-            return current.type === "monster" && !_this.isBoss(current) && current.target === target.name && distance(character, current) < character.range;
-        });
-        return entities.length ? entities[0] : null;
-    };
-    CombatSystem.prototype.isIgnoredMonster = function (target) {
-        return C_IGNORE_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
-    };
-    CombatSystem.prototype.isBoss = function (target) {
-        return C_BOSS_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
-    };
-    CombatSystem.prototype.isWorldBoss = function (target) {
-        return C_WORLD_BOSS_MONSTER.includes(target === null || target === void 0 ? void 0 : target.name);
-    };
-    CombatSystem.prototype.findTarget = function () {
-        var target = this.getTarget();
-        if (!target) {
-            return null;
-        }
-        this.currentTarget = target;
-        return target;
-    };
-    return CombatSystem;
-}(System));
-
-var NoOpCombat = /** @class */ (function (_super) {
-    combatSystem_extends(NoOpCombat, _super);
-    function NoOpCombat() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    NoOpCombat.prototype.tick = function () {
-        return;
-    };
-    return NoOpCombat;
-}(CombatSystem));
-
-
-;// CONCATENATED MODULE: ./src/lib/smartLocation.ts
-var SmartMoveLocation = /** @class */ (function () {
-    function SmartMoveLocation(x, y, map, name) {
-        this.x = x;
-        this.y = y;
-        this.map = map;
-        this.name = name;
-    }
-    SmartMoveLocation.create = function (x, y, map, name) {
-        return new SmartMoveLocation(x, y, map, name);
-    };
-    SmartMoveLocation.createName = function (name) {
-        return new SmartMoveLocation(null, null, null, name);
-    };
-    SmartMoveLocation.prototype.get = function () {
-        if (!this.x && !this.y && !this.map)
-            return this.name;
-        return this;
-    };
-    return SmartMoveLocation;
-}());
-
-var SmartLocations = /** @class */ (function () {
-    function SmartLocations() {
-    }
-    SmartLocations.TOWN = SmartMoveLocation.create(0, 0, "main", "town");
-    SmartLocations.OPEN_STAND = SmartMoveLocation.create(130, 0, "main", "open_stand");
-    return SmartLocations;
-}());
-
-var BAT1 = SmartMoveLocation.create(20, -350, "cave", "bat1");
-var BAT2 = SmartMoveLocation.create(1188, -12, "cave", "bat2");
-var BAT_BOSS = SmartMoveLocation.create(342, -1170, "cave", "bbat");
-var SNOWMAN = SmartMoveLocation.create(1125, -900, "winterland", "snowman");
-var BEE1 = SmartMoveLocation.create(530, 1070, "main", "bee1");
-var BEE2 = SmartMoveLocation.create(160, 1490, "main", "bee2");
-var BEE3 = SmartMoveLocation.create(635, 740, "main", "bee3");
-var POISIO = SmartMoveLocation.create(-170, 1290, "main", "poisio");
-var SQUIGTOAD = SmartMoveLocation.create(-1160, 560, "main", "squigtoad");
-var TORTOISE = SmartMoveLocation.create(-1127, 1080, "main", "tortoise");
-var ICE_ROAMER = SmartMoveLocation.create(823.5, -45.5, "winterland", "iceroamer");
-var ICE_ROAMER2 = SmartMoveLocation.create(1512, 104, "winterland", "iceroamer2");
-
 ;// CONCATENATED MODULE: ./src/systems/inventory/inventory.ts
 var inventory_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -1768,7 +1861,6 @@ var zett_warrior_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-
 var ZettWarrior = /** @class */ (function (_super) {
     zett_warrior_extends(ZettWarrior, _super);
     function ZettWarrior() {
@@ -1785,8 +1877,6 @@ var ZettWarrior = /** @class */ (function (_super) {
                 continue;
             start_character(partyMembers[i], "webpack");
         }
-        // TODO: this should be fleshed out or moved to web sockets
-        setInterval(function () { return AlDataClient.shiftExpired(); }, 10000); // DONT PRUNE TOO FAST OTHERWISE RACE CONDITION
         setTimeout(function () {
             zUi();
         }, 30000);
@@ -1879,216 +1969,6 @@ var SoloCombat = /** @class */ (function (_super) {
 }(CombatSystem));
 
 
-;// CONCATENATED MODULE: ./src/systems/location/locationSystem.ts
-var locationSystem_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-var LocationState;
-(function (LocationState) {
-})(LocationState || (LocationState = {}));
-var LocationSystem = /** @class */ (function (_super) {
-    locationSystem_extends(LocationSystem, _super);
-    function LocationSystem() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    LocationSystem.prototype.getName = function () {
-        return "LocationSystem";
-    };
-    LocationSystem.prototype.getLogIcon = function () {
-        return createDivWithColor("&#128099;", "purple", 10);
-    };
-    LocationSystem.prototype.smartMove = function (dest, destinationName) {
-        if (isStandOpen())
-            close_stand();
-        this.destination = dest;
-        this.destinationName = destinationName;
-        this.lastDestinationChangeAt = new Date();
-        this.setLocation(destinationName);
-        return smart_move(dest);
-    };
-    LocationSystem.prototype.getSmartMoveLocation = function (smartMoveLoc) {
-        return smartMoveLoc ? smartMoveLoc : {
-            map: character.map,
-            x: character.real_x - 5,
-            y: character.real_y + 5,
-            smart: smart
-        };
-    };
-    LocationSystem.prototype.setLocation = function (location) {
-        parent.currentLocation = location;
-    };
-    return LocationSystem;
-}(System));
-
-var NoOpLocation = /** @class */ (function (_super) {
-    locationSystem_extends(NoOpLocation, _super);
-    function NoOpLocation() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    return NoOpLocation;
-}(LocationSystem));
-
-
-;// CONCATENATED MODULE: ./src/systems/location/soloLocation.ts
-var soloLocation_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-
-
-
-// export const whitelistedWorldBosses = ["snowman"];
-var whitelistedWorldBosses = [];
-var worldBossSmartMoveLocation = {
-    "snowman": SNOWMAN
-};
-var SoloLocation = /** @class */ (function (_super) {
-    soloLocation_extends(SoloLocation, _super);
-    function SoloLocation(mobDestination, locationChangeIntervalMin) {
-        var _this = _super.call(this) || this;
-        _this.mobDestination = mobDestination;
-        _this.locationChangeIntervalMin = locationChangeIntervalMin;
-        _this.lastDestinationChangeAt = pastDatePlusMins(locationChangeIntervalMin + 1);
-        parent.currentLocation = "?";
-        return _this;
-    }
-    SoloLocation.prototype.beforeBusy = function () {
-        var _a;
-        if (parent.S.grinch && parent.S.grinch.live) {
-            if (parent.S.grinch.hp < 1000000) { // try to move to kane when less than 1m hp
-                if (!AlDataClient.alNPCInfo.Kane && canCall("fetchNpcInfo", "alData", 5000)) {
-                    AlDataClient.fetchNpcInfo();
-                }
-                if (((_a = AlDataClient.alNPCInfo.Kane) === null || _a === void 0 ? void 0 : _a.length) > 0) {
-                    for (var i = 0; i < AlDataClient.alNPCInfo.Kane.length; i++) {
-                        var kane = AlDataClient.alNPCInfo.Kane[i];
-                        if (kane.server_region === server.region && kane.server_identifier === server.id && sinceConvert(new Date(kane.lastupdate), TimeIn.MINUTES) < 5) {
-                            utils_getLocationSystem().smartMove(kane, "kane");
-                            return;
-                        }
-                    }
-                }
-            }
-            if (!this.previousGrinchLocation) {
-                this.previousGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
-            }
-            if (secSince(this.lastDestinationChangeAt) > 10 && getCombatSystem().stateMachine.currentState != CombatState.WB) {
-                var currentGrinchLocation = SmartMoveLocation.create(parent.S.grinch.x, parent.S.grinch.y, parent.S.grinch.map, "grinch");
-                if (!smart.moving || !isWithinSquare(this.previousGrinchLocation, currentGrinchLocation, 200)) {
-                    this.smartMove(parent.S["grinch"], "grinch");
-                    this.lastDestinationChangeAt = new Date();
-                }
-                this.previousGrinchLocation = currentGrinchLocation;
-            }
-        }
-    };
-    SoloLocation.prototype.tick = function () {
-        // TODO: grinch is special, remove after event is over
-        var grinch = getAlWorldBoss("grinch");
-        if (parent.S.grinch && parent.S.grinch.live) {
-            // no-op, handled in beforeBusy()
-        }
-        else if (grinch && timeTillWorldBoss(grinch) <= 0) { // grinch is live
-            changeServer(grinch.serverRegion, grinch.serverIdentifier);
-        }
-        // Engaged in boss/worldboss, do not move
-        else if (getCombatSystem().stateMachine.currentState === CombatState.WB || getCombatSystem().stateMachine.currentState === CombatState.B) {
-            if (sinceConvert(getCombatSystem().stateMachine.currentStateSetTime, TimeIn.SECONDS) > 10) {
-                this.forceNextLocation();
-            }
-        }
-        else if (parent.S.holidayseason && !character.s.holidayspirit) {
-            this.smartMove("town", "xmas-buff").then(function () {
-                parent.socket.emit("interaction", { type: "newyear_tree" });
-            });
-            return;
-        }
-        else {
-            var sinceWb = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.WB);
-            var sinceB = getCombatSystem().stateMachine.getStateLastSetTime(CombatState.B);
-            if (sinceWb > 30 && sinceB > 30) {
-                this.moveToNextLocation();
-            }
-            else {
-                debugLog("sinceWb: " + sinceWb + " | sinceB: " + sinceB, "location_debug!");
-            }
-        }
-    };
-    SoloLocation.prototype.forceNextLocation = function () {
-        this.lastDestinationChangeAt = pastDatePlusMins(this.locationChangeIntervalMin + 1);
-    };
-    SoloLocation.prototype.moveToNextLocation = function () {
-        var nextLocation;
-        var bossSpawningSoon = false;
-        // always goes to bosses in order
-        for (var boss in whitelistedWorldBosses) {
-            var worldBossName = whitelistedWorldBosses[boss];
-            var worldBoss = isWorldBossReady(worldBossName);
-            if (!worldBossSmartMoveLocation[worldBossName])
-                debugLog("No SmartLocation found for " + worldBossName);
-            if (worldBoss) {
-                if (worldBoss.serverIdentifier != server.id || worldBoss.serverRegion != server.region) {
-                    changeServer(worldBoss.serverRegion, worldBoss.serverIdentifier);
-                    return;
-                }
-                nextLocation = parent.S[worldBossName].live ? parent.S[worldBossName] : worldBossSmartMoveLocation[worldBossName];
-                this.nextLocationName = worldBossName;
-                this.forceNextLocation();
-                bossSpawningSoon = true;
-            }
-        }
-        // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
-        if (!bossSpawningSoon && ("PVP" != server.id || "EU" != server.region)) {
-            changeServer("EU", "PVP");
-        }
-        if (!nextLocation) {
-            if (typeof this.mobDestination === "string") {
-                nextLocation = this.nextLocationName = this.mobDestination;
-            }
-            else {
-                nextLocation = this.mobDestination.get();
-                this.nextLocationName = this.mobDestination.name;
-            }
-        }
-        if (this.nextLocationName === parent.currentLocation) {
-            return;
-        }
-        if (mssince(this.lastDestinationChangeAt) > minutesInMs(this.locationChangeIntervalMin)) {
-            this.smartMove(nextLocation, this.nextLocationName);
-            this.lastDestinationChangeAt = new Date();
-        }
-    };
-    return SoloLocation;
-}(LocationSystem));
-
-
 ;// CONCATENATED MODULE: ./src/systems/debug/logging.ts
 var logging_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -2128,7 +2008,7 @@ var LoggingSystem = /** @class */ (function (_super) {
         _this._logInventory = true;
         _this._logCombat = true;
         _this._logLocation = true;
-        _this._logWorldBosses = true;
+        _this._logWorldBosses = false;
         _this._itemsShownCount = 0;
         return _this;
     }
@@ -2478,7 +2358,6 @@ var zetadin_paladin_extends = (undefined && undefined.__extends) || (function ()
 })();
 
 
-
 var ZetadinPaladin = /** @class */ (function (_super) {
     zetadin_paladin_extends(ZetadinPaladin, _super);
     function ZetadinPaladin() {
@@ -2492,8 +2371,6 @@ var ZetadinPaladin = /** @class */ (function (_super) {
                 continue;
             start_character(partyMembers[i], "webpack");
         }
-        // TODO: this should be fleshed out or moved to web sockets
-        setInterval(function () { return AlDataClient.shiftExpired(); }, 10000); // DONT PRUNE TOO FAST OTHERWISE RACE CONDITION
         setTimeout(function () {
             zUi();
         }, 30000);

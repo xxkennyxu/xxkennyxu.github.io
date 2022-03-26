@@ -516,7 +516,7 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 
-var whitelistedWorldBosses = ["dragold"];
+var whitelistedWorldBosses = [];
 var worldBossSmartMoveLocation = {
     "snowman": SNOWMAN,
 };
@@ -2506,7 +2506,7 @@ var MerchantConfig = /** @class */ (function () {
         new UpgradeItem("wcap", 7),
         new UpgradeItem("wshoes", 7),
         new UpgradeItem("wbreeches", 7),
-        new UpgradeItem("wattire", 7),
+        new UpgradeItem("wattire", 8),
         new UpgradeItem("wgloves", 7),
         new UpgradeItem("slimestaff", 7),
         new UpgradeItem("phelmet", 7),

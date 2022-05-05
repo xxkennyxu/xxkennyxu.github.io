@@ -28,7 +28,7 @@ var SmartLocations = /** @class */ (function () {
     function SmartLocations() {
     }
     SmartLocations.TOWN = SmartMoveLocation.create(0, 0, "main", "town");
-    SmartLocations.OPEN_STAND = SmartMoveLocation.create(130, 0, "main", "open_stand");
+    SmartLocations.OPEN_STAND = SmartMoveLocation.create(130, -5, "main", "open_stand");
     return SmartLocations;
 }());
 
@@ -3000,7 +3000,7 @@ var Vending = /** @class */ (function () {
         if (!isCharacterWithin(SmartLocations.OPEN_STAND, 10) && !smart.moving) {
             utils_getLocationSystem().smartMove(SmartLocations.OPEN_STAND, SmartLocations.OPEN_STAND.name);
         }
-        else if (!smart.moving && !isStandOpen() && isCharacterWithin(SmartLocations.OPEN_STAND, 0)) {
+        else if (!smart.moving && !isStandOpen() && isCharacterWithin(SmartLocations.OPEN_STAND, 5)) {
             open_stand(0);
         }
         else if (isStandOpen() && this.vendingItemQueue.length) {
@@ -3133,8 +3133,8 @@ var Zetchant = /** @class */ (function () {
             if (!isCharacterWithin(SmartLocations.TOWN, 500))
                 return;
             // TODO: remove after christmas
-            if (!character.s.holidayspirit)
-                parent.socket.emit("interaction", { type: "newyear_tree" });
+            // if(!character.s.holidayspirit)
+            // 	parent.socket.emit("interaction",{type:"newyear_tree"});
             for (var i = 0; i < character.items.length; i++) {
                 var item = character.items[i];
                 if (!item)

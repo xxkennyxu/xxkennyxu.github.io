@@ -2827,7 +2827,7 @@ var Upgrading = /** @class */ (function () {
                 return compound(items[0], items[1], items[2], locate_item("cscroll" + grade));
             }
         }
-        throw new Error("Should not happen: " + this._stateMachine.currentState);
+        // TODO: throw new Error(`Should not happen: ${this._stateMachine.currentState}`);
     };
     return Upgrading;
 }());

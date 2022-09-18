@@ -616,8 +616,8 @@ var SoloLocation = /** @class */ (function (_super) {
             }
         }
         // if no boss is spawning soon and we considered the data from AlData, switch server back if applicable
-        if (!bossSpawningSoon && ("PVP" != server.id || "US" != server.region)) {
-            changeServer("US", "PVP");
+        if (!bossSpawningSoon && ("I" != server.id || "US" != server.region)) {
+            changeServer("US", "I");
         }
         if (!nextLocation) {
             if (typeof this.mobDestination === "string") {

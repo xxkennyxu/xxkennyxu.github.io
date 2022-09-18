@@ -517,9 +517,7 @@ var soloLocation_extends = (undefined && undefined.__extends) || (function () {
 
 
 var whitelistedWorldBosses = [];
-var worldBossSmartMoveLocation = {
-    "snowman": SNOWMAN,
-};
+var worldBossSmartMoveLocation = {};
 var SoloLocation = /** @class */ (function (_super) {
     soloLocation_extends(SoloLocation, _super);
     function SoloLocation(mobDestination, locationChangeIntervalMin) {
